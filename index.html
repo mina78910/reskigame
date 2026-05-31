@@ -1041,16 +1041,16 @@
         createWall(newDoorWidth, doorHeaderHeight, 0.2, newDoorX, newDoorHeight + doorHeaderHeight / 2, roomDepth / 2);
 
         // --- ガラス出入口の奥にある玄関スペース ---
-        // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥行き約8pt・左右幅はおおよそ X=-16〜X=-9 に収める。
-        // 左端は隣のくぼみ、右端はロッカー側の余白に連動させ、周辺レイアウト変更時も内装が一緒に追従するようにする。
+        // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥行き約8pt・左右幅はおおよそ X=-14〜X=-9 に収める。
+        // 左端は隣のくぼみ開始位置、右端はロッカー側の端に連動させ、周辺レイアウト変更時も内装が一緒に追従するようにする。
         const entranceDepth = 8.0;
-        const entranceLeftInsetFromNiche = newDoorWidth - 0.3;
-        const entranceRightOffsetFromDoor = 2.0;
+        const lockerBankStartX = newDoorEnd + 0.3;
+        const entranceRightOffsetFromLocker = 1.7;
         const newHallDepth = entranceDepth;
         const entranceStartZ = roomDepth / 2;
         const entranceEndZ = entranceStartZ + entranceDepth;
-        const entranceLeftX = leftNicheStart + entranceLeftInsetFromNiche;
-        const entranceRightX = newDoorEnd + entranceRightOffsetFromDoor;
+        const entranceLeftX = leftNicheEnd;
+        const entranceRightX = lockerBankStartX + entranceRightOffsetFromLocker;
         const entranceWidth = entranceRightX - entranceLeftX;
         const entranceCenterX = (entranceLeftX + entranceRightX) / 2;
         const entranceCenterZ = entranceStartZ + entranceDepth / 2;
@@ -1807,7 +1807,7 @@
             }
             scene.add(lockerGroup);
         }
-        createLockerBank(newDoorEnd + 0.3, 15, roomDepth / 2 - 0.1);
+        createLockerBank(lockerBankStartX, 15, roomDepth / 2 - 0.1);
 
         // ==========================================
         // 8. ブレイクエリア（右奥の壁際）の配置
