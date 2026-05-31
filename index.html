@@ -460,11 +460,15 @@
 
         const backWallZ = -roomDepth / 2;
         const windowBottomHeight = 3.6 - ceilingLowerAmount;
-        const windowTopHeight = 4.6 - ceilingLowerAmount;
+        // モスグリーン面のハイサイド窓は、上端が天井高と揃うようにする
+        const windowTopHeight = roomHeight;
         const windowHeight = windowTopHeight - windowBottomHeight;
         
         createWall(roomWidth, windowBottomHeight, 0.2, 0, windowBottomHeight / 2, backWallZ, 0x98ab83);
-        createWall(roomWidth, roomHeight - windowTopHeight, 0.2, 0, windowTopHeight + (roomHeight - windowTopHeight) / 2, backWallZ, 0x98ab83);
+        const wallAboveWindowHeight = roomHeight - windowTopHeight;
+        if (wallAboveWindowHeight > 0.01) {
+            createWall(roomWidth, wallAboveWindowHeight, 0.2, 0, windowTopHeight + wallAboveWindowHeight / 2, backWallZ, 0x98ab83);
+        }
         
         const glassGeo = new THREE.BoxGeometry(roomWidth, windowHeight, 0.05);
         const glassMat = new THREE.MeshStandardMaterial({ 
@@ -1488,13 +1492,21 @@
             lightGroup.add(pointLight);
         }
 
+        // 蛍光灯は壁や追加廊下へ食い込まないよう、メイン室内だけに配置する。
+        // 4本のスイムレーンが x 軸と平行に走るイメージで、Z 方向に4列だけを固定配置。
         const lightSpacingX = 6;
-        const lightSpacingZ = 4; 
-        for (let x = -roomWidth / 2 + lightSpacingX / 2; x < roomWidth / 2; x += lightSpacingX) {
-            for (let z = mainCeilingMinZ + lightSpacingZ / 2; z < mainCeilingMaxZ; z += lightSpacingZ) {
-                if (Math.random() > 0.05) {
-                    createCeilingLight(x, z);
-                }
+        const lightMarginX = 3.0;
+        const lightMarginZ = 1.4;
+        const lightLaneCount = 4;
+        const lightMinX = -roomWidth / 2 + lightMarginX;
+        const lightMaxX = roomWidth / 2 - lightMarginX;
+        const lightMinZ = backWallZ + lightMarginZ;
+        const lightMaxZ = roomDepth / 2 - lightMarginZ;
+        const lightLaneStepZ = (lightMaxZ - lightMinZ) / (lightLaneCount - 1);
+        for (let laneIndex = 0; laneIndex < lightLaneCount; laneIndex++) {
+            const z = lightMinZ + lightLaneStepZ * laneIndex;
+            for (let x = lightMinX; x <= lightMaxX + 0.01; x += lightSpacingX) {
+                createCeilingLight(x, z);
             }
         }
 
