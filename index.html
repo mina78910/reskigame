@@ -1409,7 +1409,7 @@
 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveStart - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveEnd + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
-        createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, roomDepth / 2 + alcoveDepth + 0.1); 
+        // 中央の観音開き扉の奥は廊下へ抜けるため、背面壁は作らず開通させる。
 
         const patchTex = carpetTex.clone();
         patchTex.needsUpdate = true;
@@ -1425,31 +1425,207 @@
         alcoveLight.position.set(alcoveCenterX, alcoveHeight - 0.2, roomDepth / 2 + alcoveDepth / 2);
         scene.add(alcoveLight);
 
-        const doorGroup = new THREE.Group();
-        const doorColorMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
-        const doorWidthDouble = 1.4;
-        
-        const doorL = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorL.position.set(alcoveCenterX - doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
-        doorL.castShadow = true;
-        doorGroup.add(doorL);
-        
-        const doorR = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorR.position.set(alcoveCenterX + doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
-        doorR.castShadow = true;
-        doorGroup.add(doorR);
-
-        // --- ★ご指摘の取っ手を復元 ---
+        const centralDoorGroup = new THREE.Group();
+        const centralDoorWhiteMat = new THREE.MeshStandardMaterial({ color: 0xfdfdfb, roughness: 0.46 });
+        const centralDoorTrimMat = new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.38 });
+        const centralDoorGlassMat = new THREE.MeshStandardMaterial({ color: 0xdff6ff, transparent: true, opacity: 0.34, roughness: 0.12, metalness: 0.08 });
         const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
-        const handleL = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleL.position.set(alcoveCenterX - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
-        doorGroup.add(handleL);
-        
-        const handleR = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleR.position.set(alcoveCenterX + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
-        doorGroup.add(handleR);
+        const doorWidthDouble = 1.4;
+        const centralDoorZ = roomDepth / 2 + alcoveDepth;
+        const centralDoorLeftX = alcoveStart;
+        const centralDoorRightX = alcoveEnd;
+        const centralDoorSeamX = alcoveCenterX;
+        const centralDoorThickness = 0.06;
 
-        scene.add(doorGroup);
+        function addDoorWindow(parent, x, y, z, rotationY = 0) {
+            const pane = new THREE.Mesh(new THREE.BoxGeometry(0.18, alcoveHeight * 0.52, 0.012), centralDoorGlassMat);
+            pane.position.set(x, y, z);
+            pane.rotation.y = rotationY;
+            parent.add(pane);
+        }
+
+        // Xマイナス側の扉を、室内（Zマイナス）側へ開いた状態で描写する。
+        const openLeaf = new THREE.Group();
+        openLeaf.position.set(centralDoorLeftX, 0, centralDoorZ);
+        openLeaf.rotation.y = Math.PI / 2;
+        const openLeafPanel = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, centralDoorThickness), centralDoorWhiteMat);
+        openLeafPanel.position.set(doorWidthDouble / 2, alcoveHeight / 2, 0);
+        openLeafPanel.castShadow = true;
+        openLeafPanel.receiveShadow = true;
+        openLeaf.add(openLeafPanel);
+        addDoorWindow(openLeaf, doorWidthDouble * 0.54, alcoveHeight * 0.55, -centralDoorThickness / 2 - 0.004);
+        const openLeafHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.34), handleMat);
+        openLeafHandle.rotation.z = Math.PI / 2;
+        openLeafHandle.position.set(doorWidthDouble - 0.18, alcoveHeight / 2, -centralDoorThickness / 2 - 0.03);
+        openLeaf.add(openLeafHandle);
+        centralDoorGroup.add(openLeaf);
+
+        // Xプラス側の扉は閉じたままにして、白い観音開き扉の基準面を残す。
+        const closedLeaf = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, centralDoorThickness), centralDoorWhiteMat);
+        closedLeaf.position.set(centralDoorSeamX + doorWidthDouble / 2, alcoveHeight / 2, centralDoorZ);
+        closedLeaf.castShadow = true;
+        closedLeaf.receiveShadow = true;
+        centralDoorGroup.add(closedLeaf);
+        addDoorWindow(centralDoorGroup, centralDoorSeamX + doorWidthDouble * 0.46, alcoveHeight * 0.55, centralDoorZ - centralDoorThickness / 2 - 0.004);
+        const closedLeafHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.34), handleMat);
+        closedLeafHandle.rotation.z = Math.PI / 2;
+        closedLeafHandle.position.set(centralDoorSeamX + 0.18, alcoveHeight / 2, centralDoorZ - centralDoorThickness / 2 - 0.03);
+        centralDoorGroup.add(closedLeafHandle);
+
+        const centralFrameThickness = 0.08;
+        [centralDoorLeftX, centralDoorRightX].forEach((x) => {
+            const jamb = new THREE.Mesh(new THREE.BoxGeometry(centralFrameThickness, alcoveHeight + centralFrameThickness, 0.18), centralDoorTrimMat);
+            jamb.position.set(x, (alcoveHeight + centralFrameThickness) / 2, centralDoorZ);
+            jamb.castShadow = true;
+            centralDoorGroup.add(jamb);
+        });
+        const lintel = new THREE.Mesh(new THREE.BoxGeometry(alcoveWidth + centralFrameThickness * 2, centralFrameThickness, 0.18), centralDoorTrimMat);
+        lintel.position.set(alcoveCenterX, alcoveHeight + centralFrameThickness / 2, centralDoorZ);
+        lintel.castShadow = true;
+        centralDoorGroup.add(lintel);
+        scene.add(centralDoorGroup);
+
+        // ==========================================
+        // 廊下・エレベーターホール・トイレ入口の構築
+        // ==========================================
+        const corridorWallColor = 0x98ab83;
+        const corridorWidth = alcoveWidth;
+        const corridorStartZ = centralDoorZ;
+        const corridorEndZ = entranceEndZ;
+        const corridorCenterX = alcoveCenterX;
+        const corridorLeftX = corridorCenterX - corridorWidth / 2;
+        const corridorRightX = corridorCenterX + corridorWidth / 2;
+        const corridorCenterZ = (corridorStartZ + corridorEndZ) / 2;
+        const corridorDepth = corridorEndZ - corridorStartZ;
+        const crossHallWidthZ = corridorWidth;
+        const crossHallCenterZ = corridorEndZ - crossHallWidthZ / 2;
+        const crossHallMinZ = crossHallCenterZ - crossHallWidthZ / 2;
+        const crossHallMaxZ = crossHallCenterZ + crossHallWidthZ / 2;
+        const entranceConnectorXMin = entranceRightX;
+        const entranceConnectorXMax = corridorLeftX;
+        const elevatorHallXMin = corridorLeftX - 5.2;
+        const elevatorHallXMax = corridorLeftX;
+        const toiletEntryXMin = corridorRightX;
+        const toiletEntryXMax = corridorRightX + 3.2;
+        const elevatorBackZ = roomDepth / 2;
+        const elevatorHallZMin = elevatorBackZ;
+
+        const corridorFloorTex = carpetTex.clone();
+        corridorFloorTex.needsUpdate = true;
+        corridorFloorTex.repeat.set(corridorWidth / 4, corridorDepth / 4);
+        const corridorFloorMat = new THREE.MeshStandardMaterial({ map: corridorFloorTex, roughness: 1.0, color: 0xd7d7d2 });
+        const dimWallMat = new THREE.MeshStandardMaterial({ color: corridorWallColor, roughness: 1.0 });
+        function addRectFloor(xMin, xMax, zMin, zMax, mat = corridorFloorMat, y = 0.008) {
+            const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(xMax - xMin, zMax - zMin), mat);
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.position.set((xMin + xMax) / 2, y, (zMin + zMax) / 2);
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
+        }
+        addRectFloor(corridorLeftX, corridorRightX, corridorStartZ, corridorEndZ);
+        addRectFloor(entranceConnectorXMin, entranceConnectorXMax, crossHallMinZ, crossHallMaxZ);
+        addRectFloor(elevatorHallXMin, elevatorHallXMax, elevatorHallZMin, crossHallMaxZ);
+        addRectFloor(toiletEntryXMin, toiletEntryXMax, crossHallMinZ, crossHallMaxZ);
+
+        // 廊下は室内Zプラス側壁と同じモスグリーン系で、少し暗く見える照明にする。
+        createWall(0.16, roomHeight, corridorDepth, corridorLeftX - 0.08, roomHeight / 2, corridorCenterZ, corridorWallColor);
+        createWall(0.16, roomHeight, corridorDepth, corridorRightX + 0.08, roomHeight / 2, corridorCenterZ, corridorWallColor);
+        createWall(entranceConnectorXMax - entranceConnectorXMin, roomHeight, 0.16, (entranceConnectorXMin + entranceConnectorXMax) / 2, roomHeight / 2, crossHallMinZ - 0.08, corridorWallColor);
+        createWall(entranceConnectorXMax - entranceConnectorXMin, roomHeight, 0.16, (entranceConnectorXMin + entranceConnectorXMax) / 2, roomHeight / 2, crossHallMaxZ + 0.08, corridorWallColor);
+        createWall(elevatorHallXMax - elevatorHallXMin, roomHeight, 0.16, (elevatorHallXMin + elevatorHallXMax) / 2, roomHeight / 2, crossHallMaxZ + 0.08, corridorWallColor);
+        createWall(toiletEntryXMax - toiletEntryXMin, roomHeight, 0.16, (toiletEntryXMin + toiletEntryXMax) / 2, roomHeight / 2, crossHallMaxZ + 0.08, corridorWallColor);
+        createWall(0.16, roomHeight, crossHallMaxZ - elevatorHallZMin, elevatorHallXMin - 0.08, roomHeight / 2, (elevatorHallZMin + crossHallMaxZ) / 2, corridorWallColor);
+        createWall(0.16, roomHeight, crossHallMinZ - elevatorHallZMin, elevatorHallXMax + 0.08, roomHeight / 2, (elevatorHallZMin + crossHallMinZ) / 2, corridorWallColor);
+        createWall(0.16, roomHeight, crossHallWidthZ, toiletEntryXMax + 0.08, roomHeight / 2, crossHallCenterZ, corridorWallColor);
+
+        const hallCeilingMat = new THREE.MeshStandardMaterial({ color: 0xd8dccf, roughness: 0.9, emissive: 0x080806 });
+        [[corridorLeftX, corridorRightX, corridorStartZ, corridorEndZ], [entranceConnectorXMin, entranceConnectorXMax, crossHallMinZ, crossHallMaxZ], [elevatorHallXMin, elevatorHallXMax, elevatorHallZMin, crossHallMaxZ], [toiletEntryXMin, toiletEntryXMax, crossHallMinZ, crossHallMaxZ]].forEach(([xMin, xMax, zMin, zMax]) => {
+            const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(xMax - xMin, zMax - zMin), hallCeilingMat);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.set((xMin + xMax) / 2, roomHeight - 0.04, (zMin + zMax) / 2);
+            scene.add(ceiling);
+        });
+
+        const corridorLight = new THREE.PointLight(0xd7e0c5, 0.18, 8);
+        corridorLight.position.set(corridorCenterX, roomHeight - 0.45, corridorCenterZ + 1.2);
+        scene.add(corridorLight);
+        const crossHallLight = new THREE.PointLight(0xd7e0c5, 0.22, 9);
+        crossHallLight.position.set((entranceConnectorXMin + corridorRightX) / 2, roomHeight - 0.45, crossHallCenterZ);
+        scene.add(crossHallLight);
+
+        const elevatorDoorMat = new THREE.MeshStandardMaterial({ color: 0x555c62, roughness: 0.58, metalness: 0.18 });
+        const elevatorTrimMat = new THREE.MeshStandardMaterial({ color: 0x30343a, roughness: 0.42, metalness: 0.3 });
+        function createElevatorDoor(centerX) {
+            const elevator = new THREE.Group();
+            elevator.position.set(centerX, 0, elevatorBackZ - 0.035);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(1.55, 2.75, 0.08), elevatorDoorMat);
+            body.position.y = 1.375;
+            body.castShadow = true;
+            body.receiveShadow = true;
+            elevator.add(body);
+            const split = new THREE.Mesh(new THREE.BoxGeometry(0.025, 2.55, 0.095), elevatorTrimMat);
+            split.position.y = 1.38;
+            elevator.add(split);
+            const top = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.09, 0.12), elevatorTrimMat);
+            top.position.y = 2.79;
+            elevator.add(top);
+            const callPanel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.64, 0.04), elevatorTrimMat);
+            callPanel.position.set(0.92, 1.35, 0.035);
+            elevator.add(callPanel);
+            scene.add(elevator);
+        }
+        createWall(elevatorHallXMax - elevatorHallXMin, roomHeight, 0.18, (elevatorHallXMin + elevatorHallXMax) / 2, roomHeight / 2, elevatorBackZ - 0.09, 0xe8e8e4);
+        createElevatorDoor(elevatorHallXMin + 1.55);
+        createElevatorDoor(elevatorHallXMin + 3.65);
+
+        const toiletDoorMat = new THREE.MeshStandardMaterial({ color: 0xf7f7f4, roughness: 0.5 });
+        const toiletDoor = new THREE.Mesh(new THREE.BoxGeometry(1.35, 2.55, 0.06), toiletDoorMat);
+        toiletDoor.position.set(toiletEntryXMax - 0.75, 1.275, crossHallMinZ + 0.035);
+        toiletDoor.castShadow = true;
+        scene.add(toiletDoor);
+        const toiletSignCanvas = document.createElement('canvas');
+        toiletSignCanvas.width = 256;
+        toiletSignCanvas.height = 128;
+        const toiletCtx = toiletSignCanvas.getContext('2d');
+        toiletCtx.fillStyle = '#f8fafc';
+        toiletCtx.fillRect(0, 0, 256, 128);
+        toiletCtx.fillStyle = '#334155';
+        toiletCtx.font = 'bold 40px sans-serif';
+        toiletCtx.textAlign = 'center';
+        toiletCtx.fillText('TOILET', 128, 54);
+        toiletCtx.font = '36px sans-serif';
+        toiletCtx.fillText('🚻', 128, 102);
+        const toiletSign = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.45), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(toiletSignCanvas), roughness: 0.7 }));
+        toiletSign.position.set(toiletEntryXMax - 0.75, 1.72, crossHallMinZ + 0.072);
+        scene.add(toiletSign);
+
+        // 玄関側にも、廊下側へ開いた白い観音開き扉を設置する。扉の左端は廊下奥行き座標（crossHallMinZ）に揃える。
+        const entranceDoorGroup = new THREE.Group();
+        const entranceDoorX = entranceRightX;
+        const entranceDoorLeftZ = crossHallMinZ;
+        const entranceDoorLeafWidth = corridorWidth / 2;
+        const entranceDoorHeight = alcoveHeight;
+        const entranceDoorPanel1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, entranceDoorHeight, entranceDoorLeafWidth), centralDoorWhiteMat);
+        entranceDoorPanel1.position.set(entranceDoorX + 0.035, entranceDoorHeight / 2, entranceDoorLeftZ + entranceDoorLeafWidth / 2);
+        entranceDoorPanel1.castShadow = true;
+        entranceDoorGroup.add(entranceDoorPanel1);
+        const entranceDoorPanel2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, entranceDoorHeight, entranceDoorLeafWidth), centralDoorWhiteMat);
+        entranceDoorPanel2.position.set(entranceDoorX + 0.42, entranceDoorHeight / 2, entranceDoorLeftZ + entranceDoorLeafWidth * 1.5);
+        entranceDoorPanel2.rotation.y = -Math.PI / 2;
+        entranceDoorPanel2.castShadow = true;
+        entranceDoorGroup.add(entranceDoorPanel2);
+        scene.add(entranceDoorGroup);
+
+        const AREA_RANGES = Object.freeze({
+            mainRoom: { xMin: -roomWidth / 2, xMax: roomWidth / 2, zMin: -roomDepth / 2, zMax: roomDepth / 2 },
+            entrance: { xMin: entranceLeftX, xMax: entranceRightX, zMin: entranceStartZ, zMax: entranceEndZ },
+            centralDoorAlcove: { xMin: alcoveStart, xMax: alcoveEnd, zMin: roomDepth / 2, zMax: centralDoorZ },
+            corridor: { xMin: corridorLeftX, xMax: corridorRightX, zMin: corridorStartZ, zMax: corridorEndZ },
+            entranceConnector: { xMin: entranceConnectorXMin, xMax: entranceConnectorXMax, zMin: crossHallMinZ, zMax: crossHallMaxZ },
+            elevatorHall: { xMin: elevatorHallXMin, xMax: elevatorHallXMax, zMin: elevatorHallZMin, zMax: crossHallMaxZ },
+            toiletEntrance: { xMin: toiletEntryXMin, xMax: toiletEntryXMax, zMin: crossHallMinZ, zMax: crossHallMaxZ }
+        });
+        console.table(AREA_RANGES);
 
         // ==========================================
         // メイン天井 
@@ -2862,34 +3038,58 @@
                 if(camera.position.z < boundZMin) camera.position.z = boundZMin; 
                 
                 const zLockerBound = roomDepth / 2 - 2.0; 
-                const zAlcoveBound = roomDepth / 2 + alcoveDepth - 1.0; 
                 const zLeftNicheBound = roomDepth / 2 + leftNicheDepth - 0.4;
                 const zNewHallBound = entranceEndZ - ENTRANCE_LAYOUT.walkBackInset;
-                const alcoveAllowedLeft = alcoveStart + 0.6; 
-                const alcoveAllowedRight = alcoveEnd - 0.6;  
                 const leftNicheAllowedLeft = leftNicheStart + 0.4;
                 const leftNicheAllowedRight = leftNicheEnd - 0.4;
                 const newHallAllowedLeft = newDoorStart + 0.25;
                 const newHallAllowedRight = newDoorEnd - 0.25;
                 const entranceWalkLeft = entranceLeftX + ENTRANCE_LAYOUT.walkLeftInset;
                 const entranceWalkRight = entranceRightX - ENTRANCE_LAYOUT.walkRightInset;
-                const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
-                const inEntranceArea = camera.position.z > entranceStartZ + 0.35 && camera.position.z < zNewHallBound + 0.1;
 
-                if (inEntranceArea) {
-                    if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
-                    if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
-                    if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
-                } else if (inAlcoveMouth) {
-                    if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
-                } else if (inLeftNicheMouth) {
-                    if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
-                } else if (inNewHallMouth) {
-                    if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
-                } else if (camera.position.z > zLockerBound) {
-                    camera.position.z = zLockerBound;
+                if (camera.position.z > zLockerBound) {
+                    const walkableRects = [
+                        { xMin: entranceWalkLeft, xMax: entranceWalkRight, zMin: entranceStartZ + 0.35, zMax: zNewHallBound },
+                        { xMin: newHallAllowedLeft, xMax: newHallAllowedRight, zMin: zLockerBound, zMax: zNewHallBound },
+                        { xMin: alcoveStart + 0.45, xMax: alcoveEnd - 0.45, zMin: zLockerBound, zMax: corridorEndZ - 0.35 },
+                        { xMin: entranceWalkRight - 0.15, xMax: corridorLeftX + 0.15, zMin: crossHallMinZ + 0.25, zMax: crossHallMaxZ - 0.25 },
+                        { xMin: elevatorHallXMin + 0.35, xMax: elevatorHallXMax + 0.15, zMin: elevatorHallZMin + 0.35, zMax: crossHallMaxZ - 0.25 },
+                        { xMin: corridorRightX - 0.15, xMax: toiletEntryXMax - 0.35, zMin: crossHallMinZ + 0.25, zMax: crossHallMaxZ - 0.25 }
+                    ];
+                    const isInsideWalkable = walkableRects.some((rect) => (
+                        camera.position.x >= rect.xMin && camera.position.x <= rect.xMax &&
+                        camera.position.z >= rect.zMin && camera.position.z <= rect.zMax
+                    ));
+
+                    if (!isInsideWalkable) {
+                        if (inLeftNicheMouth) {
+                            if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
+                        } else if (inNewHallMouth) {
+                            if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
+                        } else {
+                            let nearestRect = null;
+                            let nearestDistance = Infinity;
+                            walkableRects.forEach((rect) => {
+                                const clampedX = Math.max(rect.xMin, Math.min(rect.xMax, camera.position.x));
+                                const clampedZ = Math.max(rect.zMin, Math.min(rect.zMax, camera.position.z));
+                                const dx = camera.position.x - clampedX;
+                                const dz = camera.position.z - clampedZ;
+                                const distance = Math.sqrt(dx * dx + dz * dz);
+                                if (distance < nearestDistance) {
+                                    nearestDistance = distance;
+                                    nearestRect = rect;
+                                }
+                            });
+                            if (nearestRect && nearestDistance < 0.55) {
+                                camera.position.x = Math.max(nearestRect.xMin, Math.min(nearestRect.xMax, camera.position.x));
+                                camera.position.z = Math.max(nearestRect.zMin, Math.min(nearestRect.zMax, camera.position.z));
+                            } else {
+                                camera.position.z = zLockerBound;
+                            }
+                        }
+                    }
                 }
             }
 
