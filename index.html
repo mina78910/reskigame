@@ -642,7 +642,65 @@
         createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+
+        // X=-14.30のくぼみ右壁は、玄関スペースをはっきり覗けるように黒枠付きガラス窓へ変更。
+        // 天井高がY=4.5のため、依頼の「Y 3〜10ポイント」は高さ約3ptの窓として解釈し、
+        // Z方向はくぼみの実寸内でZ=7.15〜10.45に収める。
+        const nicheEntranceGlass = {
+            surfaceX: leftNicheEnd,
+            wallCenterX: sharedNicheEntranceWallX,
+            startZ: frontExtensionStartZ + 0.15,
+            endZ: leftNicheBackZ - 0.15,
+            bottomY: 0.75,
+            topY: 3.75,
+            color: 0xd8d5ca
+        };
+        const nicheEntranceGlassHeight = nicheEntranceGlass.topY - nicheEntranceGlass.bottomY;
+        const nicheEntranceGlassCenterY = (nicheEntranceGlass.bottomY + nicheEntranceGlass.topY) / 2;
+        const nicheEntranceGlassCenterZ = (nicheEntranceGlass.startZ + nicheEntranceGlass.endZ) / 2;
+        const nicheEntranceGlassDepth = nicheEntranceGlass.endZ - nicheEntranceGlass.startZ;
+
+        // ガラスのない部分だけ壁を分割して作り、透明ガラスの奥が実際に見えるようにする。
+        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, nicheEntranceGlass.startZ, nicheEntranceGlass.color);
+        createXWallSegment(sharedNicheEntranceWallX, nicheEntranceGlass.endZ, leftNicheBackZ, nicheEntranceGlass.color);
+        createWall(0.2, nicheEntranceGlass.bottomY, nicheEntranceGlassDepth, sharedNicheEntranceWallX, nicheEntranceGlass.bottomY / 2, nicheEntranceGlassCenterZ, nicheEntranceGlass.color);
+        createWall(0.2, roomHeight - nicheEntranceGlass.topY, nicheEntranceGlassDepth, sharedNicheEntranceWallX, nicheEntranceGlass.topY + (roomHeight - nicheEntranceGlass.topY) / 2, nicheEntranceGlassCenterZ, nicheEntranceGlass.color);
+
+        const nicheEntranceGlassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xe8fbff,
+            transparent: true,
+            opacity: 0.34,
+            roughness: 0.02,
+            metalness: 0.02,
+            transmission: 0.55,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.04,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const nicheEntranceGlassPane = new THREE.Mesh(
+            new THREE.PlaneGeometry(nicheEntranceGlassDepth, nicheEntranceGlassHeight),
+            nicheEntranceGlassMat
+        );
+        nicheEntranceGlassPane.rotation.y = Math.PI / 2;
+        nicheEntranceGlassPane.position.set(nicheEntranceGlass.surfaceX - 0.006, nicheEntranceGlassCenterY, nicheEntranceGlassCenterZ);
+        scene.add(nicheEntranceGlassPane);
+
+        const nicheEntranceFrameMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.42, metalness: 0.18 });
+        const nicheEntranceFrameThickness = 0.08;
+        const nicheEntranceFrameDepth = 0.16;
+        function addNicheEntranceGlassFrame(width, height, z, y) {
+            const frame = new THREE.Mesh(new THREE.BoxGeometry(nicheEntranceFrameDepth, height, width), nicheEntranceFrameMat);
+            frame.position.set(nicheEntranceGlass.surfaceX - 0.012, y, z);
+            frame.castShadow = true;
+            frame.receiveShadow = true;
+            scene.add(frame);
+        }
+        addNicheEntranceGlassFrame(nicheEntranceFrameThickness, nicheEntranceGlassHeight + nicheEntranceFrameThickness, nicheEntranceGlass.startZ, nicheEntranceGlassCenterY);
+        addNicheEntranceGlassFrame(nicheEntranceFrameThickness, nicheEntranceGlassHeight + nicheEntranceFrameThickness, nicheEntranceGlass.endZ, nicheEntranceGlassCenterY);
+        addNicheEntranceGlassFrame(nicheEntranceGlassDepth + nicheEntranceFrameThickness, nicheEntranceFrameThickness, nicheEntranceGlassCenterZ, nicheEntranceGlass.bottomY);
+        addNicheEntranceGlassFrame(nicheEntranceGlassDepth + nicheEntranceFrameThickness, nicheEntranceFrameThickness, nicheEntranceGlassCenterZ, nicheEntranceGlass.topY);
+
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
         createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
