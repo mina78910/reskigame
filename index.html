@@ -6,7 +6,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Office Walk - Ultra Realistic V12 (Handles Restored)</title>
+  <title>リスキリングセンター3</title>
   <style>
     /* ==========================================
            UI & Base Styles
@@ -144,7 +144,7 @@
   <div id="mobile-exit">?</div>
 
   <div id="ui-layer">
-    <h1>OFFICE WALK Ultra Real V12</h1>
+    <h1>リスキリングセンター3</h1>
     <p id="start-text">画面をクリックして空間に没入する</p>
     <p id="controls-text"
       style="margin-top: 40px; font-size: 1rem; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px;">
@@ -459,12 +459,19 @@
         }
 
         const backWallZ = -roomDepth / 2;
-        const windowBottomHeight = 3.6 - ceilingLowerAmount;
-        const windowTopHeight = 4.6 - ceilingLowerAmount;
+        const originalWindowBottomHeight = 3.6 - ceilingLowerAmount;
+        const originalWindowTopHeight = 4.6 - ceilingLowerAmount;
+        const originalWindowHeight = originalWindowTopHeight - originalWindowBottomHeight;
+        // モスグリーン面のハイサイド窓は高さを保ったまま上端を天井高に揃える
+        const windowTopHeight = roomHeight;
+        const windowBottomHeight = windowTopHeight - originalWindowHeight;
         const windowHeight = windowTopHeight - windowBottomHeight;
         
         createWall(roomWidth, windowBottomHeight, 0.2, 0, windowBottomHeight / 2, backWallZ, 0x98ab83);
-        createWall(roomWidth, roomHeight - windowTopHeight, 0.2, 0, windowTopHeight + (roomHeight - windowTopHeight) / 2, backWallZ, 0x98ab83);
+        const wallAboveWindowHeight = roomHeight - windowTopHeight;
+        if (wallAboveWindowHeight > 0.01) {
+            createWall(roomWidth, wallAboveWindowHeight, 0.2, 0, windowTopHeight + wallAboveWindowHeight / 2, backWallZ, 0x98ab83);
+        }
         
         const glassGeo = new THREE.BoxGeometry(roomWidth, windowHeight, 0.05);
         const glassMat = new THREE.MeshStandardMaterial({ 
@@ -476,10 +483,12 @@
         scene.add(glass);
 
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
-        const topFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 0.05, 0.24), frameMat);
-        topFrame.position.set(0, windowTopHeight, backWallZ);
+        const windowFrameThickness = 0.05;
+        const topFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, windowFrameThickness, 0.24), frameMat);
+        // 上側の黒い縁は天井に埋まらないよう、縁の上端だけを天井高に揃える
+        topFrame.position.set(0, windowTopHeight - windowFrameThickness / 2, backWallZ);
         scene.add(topFrame);
-        const bottomFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 0.05, 0.24), frameMat);
+        const bottomFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, windowFrameThickness, 0.24), frameMat);
         bottomFrame.position.set(0, windowBottomHeight, backWallZ);
         scene.add(bottomFrame);
         
@@ -1488,13 +1497,21 @@
             lightGroup.add(pointLight);
         }
 
+        // 蛍光灯は壁や追加廊下へ食い込まないよう、メイン室内だけに配置する。
+        // 4本のスイムレーンが x 軸と平行に走るイメージで、Z 方向に4列だけを固定配置。
         const lightSpacingX = 6;
-        const lightSpacingZ = 4; 
-        for (let x = -roomWidth / 2 + lightSpacingX / 2; x < roomWidth / 2; x += lightSpacingX) {
-            for (let z = mainCeilingMinZ + lightSpacingZ / 2; z < mainCeilingMaxZ; z += lightSpacingZ) {
-                if (Math.random() > 0.05) {
-                    createCeilingLight(x, z);
-                }
+        const lightMarginX = 3.0;
+        const lightMarginZ = 1.4;
+        const lightLaneCount = 4;
+        const lightMinX = -roomWidth / 2 + lightMarginX;
+        const lightMaxX = roomWidth / 2 - lightMarginX;
+        const lightMinZ = backWallZ + lightMarginZ;
+        const lightMaxZ = roomDepth / 2 - lightMarginZ;
+        const lightLaneStepZ = (lightMaxZ - lightMinZ) / (lightLaneCount - 1);
+        for (let laneIndex = 0; laneIndex < lightLaneCount; laneIndex++) {
+            const z = lightMinZ + lightLaneStepZ * laneIndex;
+            for (let x = lightMinX; x <= lightMaxX + 0.01; x += lightSpacingX) {
+                createCeilingLight(x, z);
             }
         }
 
