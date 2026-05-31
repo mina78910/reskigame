@@ -434,6 +434,151 @@
             return texture;
         }
 
+
+        function createEntranceFloorTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const base = ctx.createLinearGradient(0, 0, size, size);
+            base.addColorStop(0, '#b8c98b');
+            base.addColorStop(0.5, '#e8c5a4');
+            base.addColorStop(1, '#8fa86c');
+            ctx.fillStyle = base;
+            ctx.fillRect(0, 0, size, size);
+
+            for (let i = 0; i < 2200; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = Math.random() * 18 + 4;
+                const greenTone = Math.random() > 0.48;
+                ctx.fillStyle = greenTone
+                    ? `rgba(${110 + Math.random() * 45}, ${135 + Math.random() * 65}, ${70 + Math.random() * 35}, ${0.16 + Math.random() * 0.22})`
+                    : `rgba(${214 + Math.random() * 36}, ${168 + Math.random() * 46}, ${128 + Math.random() * 36}, ${0.14 + Math.random() * 0.22})`;
+                ctx.beginPath();
+                ctx.ellipse(x, y, radius * (0.7 + Math.random() * 1.2), radius * (0.35 + Math.random() * 0.8), Math.random() * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 2;
+            for (let x = 0; x <= size; x += 96) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, size);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= size; y += 96) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(size, y);
+                ctx.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
+
+        function createCompanyLogoTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 768;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.88)';
+            ctx.roundRect(24, 36, 720, 184, 34);
+            ctx.fill();
+            ctx.fillStyle = '#7c3aed';
+            ctx.font = 'bold 86px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('RESKI', 328, 124);
+            ctx.fillStyle = '#ec4899';
+            ctx.font = 'bold 62px sans-serif';
+            ctx.fillText('GAME', 548, 132);
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 10;
+            ctx.beginPath();
+            ctx.arc(106, 128, 48, 0.2, Math.PI * 1.85);
+            ctx.stroke();
+            ctx.strokeStyle = '#7c3aed';
+            ctx.beginPath();
+            ctx.arc(128, 128, 48, Math.PI * 1.15, Math.PI * 2.8);
+            ctx.stroke();
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createReceptionPhone() {
+            const group = new THREE.Group();
+            const phoneMat = new THREE.MeshStandardMaterial({ color: 0x171717, roughness: 0.42, metalness: 0.08 });
+            const buttonMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.35 });
+            const cordMat = new THREE.MeshStandardMaterial({ color: 0x0f0f0f, roughness: 0.75 });
+
+            const base = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.10, 0.28), phoneMat);
+            base.position.set(0, 0.05, 0);
+            base.rotation.x = -0.08;
+            base.castShadow = true;
+            group.add(base);
+
+            const receiver = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.07, 0.09), phoneMat);
+            receiver.position.set(0, 0.17, -0.03);
+            receiver.rotation.z = 0.04;
+            receiver.castShadow = true;
+            group.add(receiver);
+
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 3; col++) {
+                    const button = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.018, 0.035), buttonMat);
+                    button.position.set(-0.11 + col * 0.11, 0.118, 0.06 + row * 0.045);
+                    button.castShadow = true;
+                    group.add(button);
+                }
+            }
+
+            const cord = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.008, 8, 30, Math.PI * 1.35), cordMat);
+            cord.position.set(-0.27, 0.12, -0.02);
+            cord.rotation.x = Math.PI / 2;
+            cord.rotation.z = -0.7;
+            group.add(cord);
+            return group;
+        }
+
+        function createEntranceBenchWithCushions(x, z, rotationY = 0) {
+            const group = new THREE.Group();
+            const benchMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.55, metalness: 0.08 });
+            const cushionMat = new THREE.MeshStandardMaterial({ color: 0xd7b46a, roughness: 0.92 });
+            const weaveMat = new THREE.MeshStandardMaterial({ color: 0x9d7a39, roughness: 0.96 });
+
+            const bench = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.24, 2.35), benchMat);
+            bench.position.y = 0.32;
+            bench.castShadow = true;
+            bench.receiveShadow = true;
+            group.add(bench);
+
+            [-0.82, 0, 0.82].forEach((offset) => {
+                const cushion = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.08, 32), cushionMat);
+                cushion.rotation.x = Math.PI / 2;
+                cushion.position.set(0, 0.48, offset);
+                cushion.scale.set(1.25, 1, 0.72);
+                cushion.castShadow = true;
+                group.add(cushion);
+
+                const weave = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.006, 8, 36), weaveMat);
+                weave.rotation.x = Math.PI / 2;
+                weave.position.set(0, 0.526, offset);
+                weave.scale.set(1.25, 0.72, 1);
+                group.add(weave);
+            });
+
+            group.position.set(x, 0, z);
+            group.rotation.y = rotationY;
+            scene.add(group);
+        }
+
         const carpetTex = createCarpetTexture();
         const floorGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
         const floorMat = new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 1.0, metalness: 0.0 });
@@ -1040,23 +1185,63 @@
         const doorHeaderHeight = roomHeight - newDoorHeight;
         createWall(newDoorWidth, doorHeaderHeight, 0.2, newDoorX, newDoorHeight + doorHeaderHeight / 2, roomDepth / 2);
 
-        // --- 出入口の奥の空間（廊下） ---
-        const newHallDepth = 2.5;
-        const greenPatchMat = new THREE.MeshStandardMaterial({ color: 0xebf2e3, roughness: 0.9 });
-        const newHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(newDoorWidth, newHallDepth), greenPatchMat);
+        // --- ガラス出入口の奥に広がる玄関 ---
+        const newHallDepth = 4.2;
+        const entranceFoyerLeft = newDoorStart - 0.15;
+        const entranceFoyerRight = newDoorEnd + 3.25;
+        const entranceFoyerWidth = entranceFoyerRight - entranceFoyerLeft;
+        const entranceFoyerCenterX = (entranceFoyerLeft + entranceFoyerRight) / 2;
+        const entranceFoyerBackZ = roomDepth / 2 + newHallDepth;
+        const entranceFloorTex = createEntranceFloorTexture();
+        entranceFloorTex.repeat.set(entranceFoyerWidth / 2.4, newHallDepth / 2.4);
+        const entranceFloorMat = new THREE.MeshStandardMaterial({ map: entranceFloorTex, roughness: 0.92 });
+        const newHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(entranceFoyerWidth, newHallDepth), entranceFloorMat);
         newHallFloor.rotation.x = -Math.PI / 2;
-        newHallFloor.position.set(newDoorX, 0.005, roomDepth / 2 + newHallDepth / 2);
+        newHallFloor.position.set(entranceFoyerCenterX, 0.005, roomDepth / 2 + newHallDepth / 2);
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
-        createWall(0.2, roomHeight, newHallDepth, newDoorStart - 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2);
-        createWall(0.2, roomHeight, newHallDepth, newDoorEnd + 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2);
-        createWall(newDoorWidth, roomHeight, 0.2, newDoorX, roomHeight / 2, roomDepth / 2 + newHallDepth, 0xe0e0e0);
-        createWall(newDoorWidth, 0.2, newHallDepth, newDoorX, roomHeight, roomDepth / 2 + newHallDepth / 2, 0xffffff);
+        createWall(0.2, roomHeight, newHallDepth, entranceFoyerLeft - 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2, 0xd9e2d7);
+        createWall(0.2, roomHeight, newHallDepth, entranceFoyerRight + 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2, 0xd9e2d7);
+        createWall(entranceFoyerWidth + 0.4, roomHeight, 0.2, entranceFoyerCenterX, roomHeight / 2, entranceFoyerBackZ + 0.1, 0xe7dfd3);
+        createWall(entranceFoyerWidth + 0.4, 0.2, newHallDepth, entranceFoyerCenterX, roomHeight, roomDepth / 2 + newHallDepth / 2, 0xffffff);
 
-        const newHallLight = new THREE.PointLight(0xfff5e6, 0.5, 6);
-        newHallLight.position.set(newDoorX, roomHeight - 0.2, roomDepth / 2 + newHallDepth / 2);
+        const entranceCeilingPanel = new THREE.Mesh(
+            new THREE.PlaneGeometry(entranceFoyerWidth + 0.32, newHallDepth),
+            new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.84, emissive: 0x0f0f0f })
+        );
+        entranceCeilingPanel.rotation.x = Math.PI / 2;
+        entranceCeilingPanel.position.set(entranceFoyerCenterX, roomHeight - 0.04, roomDepth / 2 + newHallDepth / 2);
+        entranceCeilingPanel.receiveShadow = true;
+        scene.add(entranceCeilingPanel);
+
+        createEntranceBenchWithCushions(entranceFoyerRight - 0.42, roomDepth / 2 + 2.25, 0);
+
+        const logo = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.95, 0.65),
+            new THREE.MeshStandardMaterial({ map: createCompanyLogoTexture(), transparent: true, roughness: 0.45, side: THREE.DoubleSide })
+        );
+        logo.position.set(entranceFoyerRight - 1.35, 1.72, entranceFoyerBackZ - 0.015);
+        scene.add(logo);
+
+        const receptionBoardMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.58 });
+        const receptionBoard = new THREE.Mesh(new THREE.BoxGeometry(1.65, 0.10, 0.34), receptionBoardMat);
+        receptionBoard.position.set(entranceFoyerRight - 1.35, 1.05, entranceFoyerBackZ - 0.16);
+        receptionBoard.castShadow = true;
+        receptionBoard.receiveShadow = true;
+        scene.add(receptionBoard);
+
+        const receptionPhone = createReceptionPhone();
+        receptionPhone.position.set(entranceFoyerRight - 1.35, 1.12, entranceFoyerBackZ - 0.34);
+        receptionPhone.rotation.y = Math.PI;
+        scene.add(receptionPhone);
+
+        const newHallLight = new THREE.PointLight(0xfff5e6, 0.62, 7.5);
+        newHallLight.position.set(entranceFoyerCenterX, roomHeight - 0.35, roomDepth / 2 + newHallDepth / 2);
         scene.add(newHallLight);
+        const receptionSpotLight = new THREE.PointLight(0xffe8c7, 0.28, 3.5);
+        receptionSpotLight.position.set(entranceFoyerRight - 1.35, 2.45, entranceFoyerBackZ - 0.9);
+        scene.add(receptionSpotLight);
 
         // --- ドアフレームとガラス ---
         const dFrameGroup = new THREE.Group();
@@ -2431,16 +2616,25 @@
                 const leftNicheAllowedRight = leftNicheEnd - 0.4;
                 const newHallAllowedLeft = newDoorStart + 0.25;
                 const newHallAllowedRight = newDoorEnd - 0.25;
+                const entranceFoyerAllowedLeft = entranceFoyerLeft + 0.35;
+                const entranceFoyerAllowedRight = entranceFoyerRight - 0.35;
                 const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
+                const inEntranceFoyer = camera.position.z > roomDepth / 2 + 0.25
+                    && camera.position.x > entranceFoyerAllowedLeft
+                    && camera.position.x < entranceFoyerAllowedRight;
 
                 if (inAlcoveMouth) {
                     if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
                 } else if (inLeftNicheMouth) {
                     if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
-                } else if (inNewHallMouth) {
+                } else if (inNewHallMouth || inEntranceFoyer) {
                     if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
+                    if (camera.position.z > roomDepth / 2 + 0.25) {
+                        if (camera.position.x < entranceFoyerAllowedLeft) camera.position.x = entranceFoyerAllowedLeft;
+                        if (camera.position.x > entranceFoyerAllowedRight) camera.position.x = entranceFoyerAllowedRight;
+                    }
                 } else if (camera.position.z > zLockerBound) {
                     camera.position.z = zLockerBound;
                 }
