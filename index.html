@@ -1499,6 +1499,116 @@
         }
 
         // ==========================================
+        // 室内側ガラス沿いの鉢植え
+        // ==========================================
+        function createGlassSidePottedPlant({ x, z, height, style, rotationY = 0 }) {
+            const plantGroup = new THREE.Group();
+            plantGroup.position.set(x, 0, z);
+            plantGroup.rotation.y = rotationY;
+
+            const potHeight = entranceInsetGlass.bottomY;
+            const potTopRadius = 0.27;
+            const potBottomRadius = 0.21;
+            const potMat = new THREE.MeshStandardMaterial({ color: 0x8a5a38, roughness: 0.78, metalness: 0.02 });
+            const rimMat = new THREE.MeshStandardMaterial({ color: 0x6f4026, roughness: 0.72 });
+            const soilMat = new THREE.MeshStandardMaterial({ color: 0x2f2118, roughness: 1.0 });
+            const leafMats = [0x1f5d2a, 0x2f7a35, 0x4f9b42, 0x6fbf58].map((color) =>
+                new THREE.MeshStandardMaterial({ color, roughness: 0.82, side: THREE.DoubleSide })
+            );
+            const stemMat = new THREE.MeshStandardMaterial({ color: 0x526b2f, roughness: 0.88 });
+
+            const pot = new THREE.Mesh(new THREE.CylinderGeometry(potTopRadius, potBottomRadius, potHeight, 24), potMat);
+            pot.position.y = potHeight / 2;
+            pot.castShadow = true;
+            pot.receiveShadow = true;
+            plantGroup.add(pot);
+
+            const rim = new THREE.Mesh(new THREE.CylinderGeometry(potTopRadius * 1.08, potTopRadius * 1.02, 0.08, 24), rimMat);
+            rim.position.y = potHeight - 0.02;
+            rim.castShadow = true;
+            plantGroup.add(rim);
+
+            const soil = new THREE.Mesh(new THREE.CylinderGeometry(potTopRadius * 0.92, potTopRadius * 0.88, 0.025, 24), soilMat);
+            soil.position.y = potHeight + 0.03;
+            plantGroup.add(soil);
+
+            function addLeaf(y, length, width, angle, tilt, matIndex, bend = 0) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 8), leafMats[matIndex % leafMats.length]);
+                leaf.scale.set(width, 0.035, length);
+                leaf.position.set(Math.sin(angle) * bend, y, Math.cos(angle) * bend);
+                leaf.rotation.set(tilt, angle, 0);
+                leaf.castShadow = true;
+                plantGroup.add(leaf);
+            }
+
+            if (style === 'fan') {
+                const trunkHeight = height - potHeight - 0.08;
+                const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, trunkHeight, 10), stemMat);
+                stem.position.y = potHeight + trunkHeight / 2;
+                stem.castShadow = true;
+                plantGroup.add(stem);
+
+                for (let i = 0; i < 18; i++) {
+                    const angle = (Math.PI * 2 * i) / 18;
+                    const y = Math.min(height - 0.04, potHeight + trunkHeight * (0.7 + (i % 4) * 0.1));
+                    addLeaf(y, 0.48 + (i % 3) * 0.08, 0.12, angle, -0.55 - (i % 2) * 0.18, i, 0.12);
+                }
+            } else if (style === 'broad') {
+                for (let i = 0; i < 15; i++) {
+                    const angle = (Math.PI * 2 * i) / 15;
+                    const stemHeight = height - potHeight - 0.05 - (i % 5) * 0.035;
+                    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.026, stemHeight, 8), stemMat);
+                    stem.position.set(Math.sin(angle) * 0.08, potHeight + stemHeight / 2, Math.cos(angle) * 0.08);
+                    stem.rotation.z = Math.sin(angle) * 0.18;
+                    stem.rotation.x = Math.cos(angle) * 0.18;
+                    plantGroup.add(stem);
+                    addLeaf(potHeight + stemHeight, 0.34 + (i % 4) * 0.05, 0.18 + (i % 3) * 0.03, angle, -0.82, i, 0.2);
+                }
+            } else if (style === 'lush') {
+                for (let i = 0; i < 46; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const layer = Math.random();
+                    const y = potHeight + 0.18 + layer * (height - potHeight - 0.12);
+                    const radius = 0.08 + layer * 0.24 + Math.random() * 0.12;
+                    addLeaf(y, 0.32 + Math.random() * 0.22, 0.13 + Math.random() * 0.1, angle, -0.45 - Math.random() * 0.75, i, radius);
+                }
+                for (let i = 0; i < 16; i++) {
+                    const angle = (Math.PI * 2 * i) / 16;
+                    const vine = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.018, 0.46 + Math.random() * 0.25, 7), stemMat);
+                    vine.position.set(Math.sin(angle) * 0.23, potHeight + 0.52 + Math.random() * 0.18, Math.cos(angle) * 0.23);
+                    vine.rotation.z = Math.sin(angle) * 0.45;
+                    vine.rotation.x = Math.cos(angle) * 0.45;
+                    plantGroup.add(vine);
+                }
+            }
+
+            scene.add(plantGroup);
+        }
+
+        // ガラス張りの室内側に配置。玄関ホール側や壁に食い込まないよう、ガラス面から少し離す。
+        createGlassSidePottedPlant({
+            x: entranceInsetGlass.frontStartX + 0.36,
+            z: entranceInsetGlass.frontZ - 0.58,
+            height: entranceInsetGlass.centerY,
+            style: 'fan',
+            rotationY: Math.PI
+        });
+        createGlassSidePottedPlant({
+            x: entranceInsetGlass.frontEndX - 0.34,
+            z: entranceInsetGlass.frontZ - 0.62,
+            height: entranceInsetGlass.centerY,
+            style: 'broad',
+            rotationY: Math.PI * 0.92
+        });
+        createGlassSidePottedPlant({
+            x: entranceInsetGlass.verticalX - 0.62,
+            z: entranceInsetGlass.verticalStartZ + 1.35,
+            height: entranceInsetGlass.topY,
+            style: 'lush',
+            rotationY: Math.PI / 2
+        });
+
+        // ==========================================
         // 4. 柱と植物の装飾生成
         // ==========================================
         function addProceduralFoliage(pillarGroup) {
