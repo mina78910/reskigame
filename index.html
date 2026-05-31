@@ -1784,98 +1784,90 @@
             return chairGroup;
         }
 
-        function createCafeTable() {
+        function createFreeSeatTableSet(x, z, rotationY = 0) {
             const group = new THREE.Group();
-            const topGeo = new THREE.BoxGeometry(1.2, 0.04, 1.2);
-            const topMat = new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.3 }); 
-            const top = new THREE.Mesh(topGeo, topMat);
-            top.position.y = 0.74;
-            top.castShadow = true;
-            top.receiveShadow = true;
-            group.add(top);
-            
-            const legGeo = new THREE.CylinderGeometry(0.02, 0.012, 0.74);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 }); 
-            const offsets = [
+            const tableTopGeo = new THREE.BoxGeometry(1.25, 0.05, 1.25);
+            const tableTopMat = new THREE.MeshStandardMaterial({ color: 0x9a8a78, roughness: 0.48 });
+            const tableTop = new THREE.Mesh(tableTopGeo, tableTopMat);
+            tableTop.position.y = 0.74;
+            tableTop.castShadow = true;
+            tableTop.receiveShadow = true;
+            group.add(tableTop);
+
+            const legGeo = new THREE.BoxGeometry(0.07, 0.72, 0.07);
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x6f665b, roughness: 0.55 });
+            [
                 [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]
-            ];
-            offsets.forEach(pos => {
+            ].forEach(([lx, lz]) => {
                 const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(pos[0], 0.37, pos[1]);
-                leg.rotation.z = pos[0] < 0 ? -0.05 : 0.05;
-                leg.rotation.x = pos[1] < 0 ? -0.05 : 0.05;
+                leg.position.set(lx, 0.36, lz);
                 leg.castShadow = true;
                 group.add(leg);
             });
-            return group;
-        }
 
-        function createCafeChair() {
-            const group = new THREE.Group();
-            const shellMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, side: THREE.DoubleSide });
-            const legMat = new THREE.MeshStandardMaterial({ color: 0xc19a6b, roughness: 0.8 }); 
-            
-            const seatGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24);
-            const seat = new THREE.Mesh(seatGeo, shellMat);
-            seat.position.y = 0.45;
-            seat.scale.set(1, 1, 0.9);
-            seat.castShadow = true;
-            group.add(seat);
-            
-            const backGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.35, 24, 1, true, 0, Math.PI);
-            const back = new THREE.Mesh(backGeo, shellMat);
-            back.position.set(0, 0.6, 0); 
-            back.scale.set(1, 1, 0.9);
-            back.castShadow = true;
-            group.add(back);
-            
-            const legGeo = new THREE.CylinderGeometry(0.015, 0.01, 0.45);
-            const offsets = [
-                [-0.15, -0.15], [0.15, -0.15], [-0.15, 0.12], [0.15, 0.12]
+            const chairConfigs = [
+                { color: 0xb8d9ef, position: [0.06, 0, -1.02], rotation: 0 },
+                { color: 0xb8d9ef, position: [0.02, 0, 0.94], rotation: Math.PI },
+                { color: 0xf3e6a2, position: [-1.0, 0, 0.07], rotation: -Math.PI / 2 },
+                { color: 0xf3e6a2, position: [1.08, 0, -0.05], rotation: Math.PI / 2 }
             ];
-            offsets.forEach(pos => {
-                const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(pos[0], 0.225, pos[1]);
-                leg.rotation.z = pos[0] < 0 ? -0.15 : 0.15;
-                leg.rotation.x = pos[1] < 0 ? -0.15 : 0.15;
-                leg.castShadow = true;
-                group.add(leg);
+            chairConfigs.forEach(({ color, position, rotation }) => {
+                const chair = createFreeSeatChair(color);
+                chair.position.set(...position);
+                chair.rotation.y = rotation;
+                group.add(chair);
             });
-            return group;
-        }
 
-        function createCafeSet(x, z) {
-            const group = new THREE.Group();
-            group.add(createCafeTable());
-            
-            const c1 = createCafeChair();
-            c1.position.set(0, 0, 0.8);
-            c1.rotation.y = 0; 
-            group.add(c1);
-            
-            const c2 = createCafeChair();
-            c2.position.set(0, 0, -0.8);
-            c2.rotation.y = Math.PI; 
-            group.add(c2);
-            
-            const c3 = createCafeChair();
-            c3.position.set(0.8, 0, 0);
-            c3.rotation.y = Math.PI / 2;
-            group.add(c3);
-            
-            const c4 = createCafeChair();
-            c4.position.set(-0.8, 0, 0);
-            c4.rotation.y = -Math.PI / 2;
-            group.add(c4);
-            
             group.position.set(x, 0, z);
+            group.rotation.y = rotationY;
             scene.add(group);
         }
 
-        createCafeSet(-27.5, -2.2);
-        createCafeSet(-32.5, -2.2);
-        createCafeSet(-27.5, -4.8);
-        createCafeSet(-32.5, -4.8);
+        function createFreeSeatChair(color) {
+            const group = new THREE.Group();
+            const cushionMat = new THREE.MeshStandardMaterial({ color, roughness: 0.82 });
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0xf6f4ef, roughness: 0.42 });
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x5c5f63, metalness: 0.25, roughness: 0.35 });
+
+            const seatShell = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.045, 0.46), frameMat);
+            seatShell.position.y = 0.43;
+            seatShell.castShadow = true;
+            group.add(seatShell);
+
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.055, 0.4), cushionMat);
+            seat.position.y = 0.47;
+            seat.castShadow = true;
+            group.add(seat);
+
+            const backShell = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.36, 0.055), frameMat);
+            backShell.position.set(0, 0.71, -0.25);
+            backShell.castShadow = true;
+            group.add(backShell);
+
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.3, 0.06), cushionMat);
+            back.position.set(0, 0.72, -0.22);
+            back.castShadow = true;
+            group.add(back);
+
+            const legGeo = new THREE.CylinderGeometry(0.015, 0.012, 0.43);
+            [
+                [-0.18, -0.16], [0.18, -0.16], [-0.18, 0.16], [0.18, 0.16]
+            ].forEach(([lx, lz]) => {
+                const leg = new THREE.Mesh(legGeo, legMat);
+                leg.position.set(lx, 0.215, lz);
+                leg.rotation.z = lx < 0 ? -0.08 : 0.08;
+                leg.rotation.x = lz < 0 ? 0.08 : -0.08;
+                leg.castShadow = true;
+                group.add(leg);
+            });
+
+            return group;
+        }
+
+        createFreeSeatTableSet(-32.0, -4.8);
+        createFreeSeatTableSet(-29.2, -4.8);
+        createFreeSeatTableSet(-32.0, -2.2);
+        createFreeSeatTableSet(-29.2, -2.2);
 
 
         // ==========================================
@@ -1958,10 +1950,11 @@
             createDeskRow(x, 0, 4);
         }
 
-        // デスクを抜いた中央フリースペース（x = 5.4付近）にテーブルセットを3つ配置
-        createCafeSet(5.4, -2.0);
-        createCafeSet(5.4, 0.0);
-        createCafeSet(5.4, 2.0);
+        // デスクを抜いた中央フリースペース（x = 5.4付近）に共通フリー席セットをダイヤ形に4つ配置
+        createFreeSeatTableSet(5.4, -2.6, Math.PI / 4);
+        createFreeSeatTableSet(3.5, 0.0, Math.PI / 4);
+        createFreeSeatTableSet(7.3, 0.0, Math.PI / 4);
+        createFreeSeatTableSet(5.4, 2.6, Math.PI / 4);
 
         function createWallDeskStation(x, z, facingAngle) {
             const stationGroup = new THREE.Group();
