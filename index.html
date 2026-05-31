@@ -459,9 +459,12 @@
         }
 
         const backWallZ = -roomDepth / 2;
-        const windowBottomHeight = 3.6 - ceilingLowerAmount;
-        // モスグリーン面のハイサイド窓は、上端が天井高と揃うようにする
+        const originalWindowBottomHeight = 3.6 - ceilingLowerAmount;
+        const originalWindowTopHeight = 4.6 - ceilingLowerAmount;
+        const originalWindowHeight = originalWindowTopHeight - originalWindowBottomHeight;
+        // モスグリーン面のハイサイド窓は高さを保ったまま上端を天井高に揃える
         const windowTopHeight = roomHeight;
+        const windowBottomHeight = windowTopHeight - originalWindowHeight;
         const windowHeight = windowTopHeight - windowBottomHeight;
         
         createWall(roomWidth, windowBottomHeight, 0.2, 0, windowBottomHeight / 2, backWallZ, 0x98ab83);
@@ -480,10 +483,12 @@
         scene.add(glass);
 
         const frameMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
-        const topFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 0.05, 0.24), frameMat);
-        topFrame.position.set(0, windowTopHeight, backWallZ);
+        const windowFrameThickness = 0.05;
+        const topFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, windowFrameThickness, 0.24), frameMat);
+        // 上側の黒い縁は天井に埋まらないよう、縁の上端だけを天井高に揃える
+        topFrame.position.set(0, windowTopHeight - windowFrameThickness / 2, backWallZ);
         scene.add(topFrame);
-        const bottomFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, 0.05, 0.24), frameMat);
+        const bottomFrame = new THREE.Mesh(new THREE.BoxGeometry(roomWidth, windowFrameThickness, 0.24), frameMat);
         bottomFrame.position.set(0, windowBottomHeight, backWallZ);
         scene.add(bottomFrame);
         
