@@ -984,12 +984,10 @@
             scene.add(roomLight);
         }
 
-        function createTeleconferenceBox() {
+        function createTeleconferenceBox(boothX = -roomWidth / 2 + 1.25 / 2 + 0.03, boothZ = roomDepth / 2 - 1.18 / 2 - 0.03, rotationY = 0) {
             const boothWidth = 1.25;
             const boothDepth = 1.18;
             const boothHeight = baseMeetingDoorHeight * 1.5;
-            const boothX = -roomWidth / 2 + boothWidth / 2 + 0.03;
-            const boothZ = roomDepth / 2 - boothDepth / 2 - 0.03;
             const boothWoodTex = createWoodTexture();
             boothWoodTex.repeat.set(1.4, 3.0);
             const lightWoodMat = new THREE.MeshStandardMaterial({ map: boothWoodTex, color: 0xf2d8b8, roughness: 0.48 });
@@ -998,6 +996,7 @@
 
             const boothGroup = new THREE.Group();
             boothGroup.position.set(boothX, 0, boothZ);
+            boothGroup.rotation.y = rotationY;
 
             const panelThickness = 0.06;
             const backPanel = new THREE.Mesh(new THREE.BoxGeometry(boothWidth, boothHeight, panelThickness), lightWoodMat);
@@ -2010,12 +2009,17 @@
         }
 
         const deskOffset = 2.8; 
+        const mossWallDeskZ = -roomDepth / 2 + 1.8;
         for (let x = -20; x <= 20; x += 10) { 
-            if (x - deskOffset > -21) {
-                createWallDeskStation(x - deskOffset, -roomDepth / 2 + 1.8, 0); 
+            createWallDeskStation(x - deskOffset, mossWallDeskZ, 0);
+            if (x + deskOffset < 21) {
+                createWallDeskStation(x + deskOffset, mossWallDeskZ, 0);
             }
-            createWallDeskStation(x + deskOffset, -roomDepth / 2 + 1.8, 0); 
         }
+
+        const mossWallTeleconferenceBoothDepth = 1.18;
+        const mossWallTeleconferenceBoothZ = backWallZ + 0.1 + mossWallTeleconferenceBoothDepth / 2;
+        createTeleconferenceBox(20 + deskOffset, mossWallTeleconferenceBoothZ, Math.PI);
 
         // ==========================================
        // 7. ロッカーの配置
