@@ -458,6 +458,59 @@
             createWall(0.2, height, depth, centerX, height / 2, startZ + depth / 2, color);
         }
 
+        function createXWallGlassOpening(centerX, startZ, endZ, openingBottomY, openingTopY, openingStartZ, openingEndZ, color = 0xd0d8e8, height = roomHeight) {
+            const frameZStart = Math.max(startZ, openingStartZ);
+            const frameZEnd = Math.min(endZ, openingEndZ);
+            const frameBottomY = Math.max(0, openingBottomY);
+            const frameTopY = Math.min(height, openingTopY);
+            const frameDepth = frameZEnd - frameZStart;
+            const glassHeight = frameTopY - frameBottomY;
+
+            if (frameDepth <= 0.01 || glassHeight <= 0.01) {
+                createXWallSegment(centerX, startZ, endZ, color, height);
+                return;
+            }
+
+            createXWallSegment(centerX, startZ, frameZStart, color, height);
+            createXWallSegment(centerX, frameZEnd, endZ, color, height);
+            createWall(0.2, frameBottomY, frameDepth, centerX, frameBottomY / 2, frameZStart + frameDepth / 2, color);
+            createWall(0.2, height - frameTopY, frameDepth, centerX, frameTopY + (height - frameTopY) / 2, frameZStart + frameDepth / 2, color);
+
+            const glassMat = new THREE.MeshStandardMaterial({
+                color: 0xdff7ff,
+                transparent: true,
+                opacity: 0.2,
+                roughness: 0.04,
+                metalness: 0.08,
+                side: THREE.DoubleSide
+            });
+            const glass = new THREE.Mesh(new THREE.BoxGeometry(0.035, glassHeight, frameDepth), glassMat);
+            glass.position.set(centerX, frameBottomY + glassHeight / 2, frameZStart + frameDepth / 2);
+            glass.castShadow = false;
+            glass.receiveShadow = true;
+            scene.add(glass);
+
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.34, metalness: 0.08 });
+            const frameThickness = 0.08;
+            const frameXDepth = 0.24;
+            [frameZStart, frameZEnd].forEach((z) => {
+                const verticalFrame = new THREE.Mesh(new THREE.BoxGeometry(frameXDepth, glassHeight + frameThickness * 2, frameThickness), frameMat);
+                verticalFrame.position.set(centerX, frameBottomY + glassHeight / 2, z);
+                verticalFrame.castShadow = true;
+                scene.add(verticalFrame);
+            });
+            [frameBottomY, frameTopY].forEach((y) => {
+                const horizontalFrame = new THREE.Mesh(new THREE.BoxGeometry(frameXDepth, frameThickness, frameDepth + frameThickness * 2), frameMat);
+                horizontalFrame.position.set(centerX, y, frameZStart + frameDepth / 2);
+                horizontalFrame.castShadow = true;
+                scene.add(horizontalFrame);
+            });
+            const centerMullion = new THREE.Mesh(new THREE.BoxGeometry(frameXDepth, glassHeight, frameThickness * 0.75), frameMat);
+            centerMullion.position.set(centerX, frameBottomY + glassHeight / 2, frameZStart + frameDepth / 2);
+            centerMullion.castShadow = true;
+            scene.add(centerMullion);
+        }
+
         const backWallZ = -roomDepth / 2;
         const windowBottomHeight = 3.6 - ceilingLowerAmount;
         const windowTopHeight = 4.6 - ceilingLowerAmount;
@@ -642,7 +695,21 @@
         createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+        const nicheEntranceGlassStartZ = frontExtensionStartZ + 0.28;
+        const nicheEntranceGlassEndZ = leftNicheBackZ - 0.28;
+        const nicheEntranceGlassBottomY = 0.52;
+        const nicheEntranceGlassTopY = roomHeight - 0.22;
+        // X=-14.30 の壁面から、くぼみ内と玄関スペースをはっきり見通せる黒縁のガラス窓にする。
+        createXWallGlassOpening(
+            sharedNicheEntranceWallX,
+            frontExtensionStartZ,
+            leftNicheBackZ,
+            nicheEntranceGlassBottomY,
+            nicheEntranceGlassTopY,
+            nicheEntranceGlassStartZ,
+            nicheEntranceGlassEndZ,
+            0xd0d8e8
+        );
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
         createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
@@ -1124,7 +1191,7 @@
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
-        // くぼみ右端と玄関左端の共有壁は、くぼみ側で作った壁を使い、奥側の不足分だけ延長する。
+        // くぼみ右端と玄関左端の共有壁は、くぼみ側で作ったガラス入り壁を使い、奥側の不足分だけ延長する。
         // 同じ境界に2枚の壁を重ねないことで、厚みの二重化と今後の修正漏れを防ぐ。
         createXWallSegment(sharedNicheEntranceWallX, leftNicheBackZ, entranceEndZ, 0xd8d5ca);
         createXWallSegment(entranceRightX + 0.1, entranceStartZ, entranceEndZ, 0xd8d5ca);
