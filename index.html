@@ -1409,7 +1409,92 @@
 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveStart - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveEnd + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
-        createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, roomDepth / 2 + alcoveDepth + 0.1); 
+
+        // 観音開きドアの先に続く薄暗い廊下。Z=15付近で突き当たり、右手（X+方向）に玄関が見える。
+        const mainHallStartZ = roomDepth / 2 + alcoveDepth;
+        const mainHallEndZ = entranceBackZ;
+        const mainHallTurnStartZ = mainHallEndZ - 1.15;
+        const mainHallRightEndX = alcoveEnd + 7.0;
+        const mainHallWallColor = 0xc2c9d3;
+        const mainHallCeilingColor = 0xb8c0cc;
+        const mainHallDimLightColor = 0xffefd0;
+
+        createXWallSegment(alcoveStart - 0.1, mainHallStartZ, mainHallEndZ, mainHallWallColor, alcoveHeight);
+        createXWallSegment(alcoveEnd + 0.1, mainHallStartZ, mainHallTurnStartZ, mainHallWallColor, alcoveHeight);
+        createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, mainHallEndZ + 0.1, mainHallWallColor);
+        createWall(mainHallRightEndX - alcoveEnd, alcoveHeight, 0.2, (alcoveEnd + mainHallRightEndX) / 2, alcoveHeight / 2, mainHallTurnStartZ - 0.1, mainHallWallColor);
+        createWall(mainHallRightEndX - alcoveEnd, alcoveHeight, 0.2, (alcoveEnd + mainHallRightEndX) / 2, alcoveHeight / 2, mainHallEndZ + 0.1, mainHallWallColor);
+
+        const hallTex = carpetTex.clone();
+        hallTex.needsUpdate = true;
+        hallTex.repeat.set(alcoveWidth / 4, (mainHallEndZ - mainHallStartZ) / 4);
+        const hallFloorMat = new THREE.MeshStandardMaterial({ map: hallTex, roughness: 1.0 });
+        const straightHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(alcoveWidth, mainHallEndZ - mainHallStartZ), hallFloorMat);
+        straightHallFloor.rotation.x = -Math.PI / 2;
+        straightHallFloor.position.set(alcoveCenterX, 0.002, (mainHallStartZ + mainHallEndZ) / 2);
+        straightHallFloor.receiveShadow = true;
+        scene.add(straightHallFloor);
+
+        const turnHallTex = carpetTex.clone();
+        turnHallTex.needsUpdate = true;
+        turnHallTex.repeat.set((mainHallRightEndX - alcoveEnd) / 4, (mainHallEndZ - mainHallTurnStartZ) / 4);
+        const turnHallFloor = new THREE.Mesh(
+            new THREE.PlaneGeometry(mainHallRightEndX - alcoveEnd, mainHallEndZ - mainHallTurnStartZ),
+            new THREE.MeshStandardMaterial({ map: turnHallTex, roughness: 1.0 })
+        );
+        turnHallFloor.rotation.x = -Math.PI / 2;
+        turnHallFloor.position.set((alcoveEnd + mainHallRightEndX) / 2, 0.0025, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        turnHallFloor.receiveShadow = true;
+        scene.add(turnHallFloor);
+
+        const straightHallCeiling = new THREE.Mesh(
+            new THREE.PlaneGeometry(alcoveWidth + 0.35, mainHallEndZ - mainHallStartZ),
+            new THREE.MeshStandardMaterial({ color: mainHallCeilingColor, roughness: 0.9 })
+        );
+        straightHallCeiling.rotation.x = Math.PI / 2;
+        straightHallCeiling.position.set(alcoveCenterX, alcoveHeight - 0.04, (mainHallStartZ + mainHallEndZ) / 2);
+        scene.add(straightHallCeiling);
+
+        const turnHallCeiling = new THREE.Mesh(
+            new THREE.PlaneGeometry(mainHallRightEndX - alcoveEnd, mainHallEndZ - mainHallTurnStartZ),
+            new THREE.MeshStandardMaterial({ color: mainHallCeilingColor, roughness: 0.9 })
+        );
+        turnHallCeiling.rotation.x = Math.PI / 2;
+        turnHallCeiling.position.set((alcoveEnd + mainHallRightEndX) / 2, alcoveHeight - 0.04, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        scene.add(turnHallCeiling);
+
+        const mainHallLight1 = new THREE.PointLight(mainHallDimLightColor, 0.22, 4.4);
+        mainHallLight1.position.set(alcoveCenterX, alcoveHeight - 0.5, mainHallStartZ + 2.0);
+        scene.add(mainHallLight1);
+        const mainHallLight2 = new THREE.PointLight(mainHallDimLightColor, 0.18, 4.0);
+        mainHallLight2.position.set(alcoveCenterX, alcoveHeight - 0.55, mainHallEndZ - 1.0);
+        scene.add(mainHallLight2);
+        const entryGlimpseLight = new THREE.PointLight(0xffdd9a, 0.48, 5.2);
+        entryGlimpseLight.position.set(mainHallRightEndX - 0.8, 1.8, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        scene.add(entryGlimpseLight);
+
+        const visibleEntranceGroup = new THREE.Group();
+        const entranceDoorMat = new THREE.MeshStandardMaterial({ color: 0x8f5f38, roughness: 0.5 });
+        const entranceDoor = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.35, 1.05), entranceDoorMat);
+        entranceDoor.position.set(mainHallRightEndX - 0.05, 1.18, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        entranceDoor.castShadow = true;
+        visibleEntranceGroup.add(entranceDoor);
+        const entranceGlow = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.15, 2.45),
+            new THREE.MeshBasicMaterial({ color: 0xfff0c0, transparent: true, opacity: 0.25, side: THREE.DoubleSide })
+        );
+        entranceGlow.rotation.y = Math.PI / 2;
+        entranceGlow.position.set(mainHallRightEndX - 0.11, 1.23, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        visibleEntranceGroup.add(entranceGlow);
+        const welcomeMat = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.2, 0.55),
+            new THREE.MeshStandardMaterial({ color: 0x4b5d4a, roughness: 0.9 })
+        );
+        welcomeMat.rotation.x = -Math.PI / 2;
+        welcomeMat.rotation.z = Math.PI / 2;
+        welcomeMat.position.set(mainHallRightEndX - 0.65, 0.01, (mainHallTurnStartZ + mainHallEndZ) / 2);
+        visibleEntranceGroup.add(welcomeMat);
+        scene.add(visibleEntranceGroup);
 
         const patchTex = carpetTex.clone();
         patchTex.needsUpdate = true;
@@ -1429,24 +1514,27 @@
         const doorColorMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
         const doorWidthDouble = 1.4;
         
-        const doorL = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorL.position.set(alcoveCenterX - doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
+        const openedDoorZ = roomDepth / 2 + alcoveDepth - doorWidthDouble / 2;
+        const doorL = new THREE.Mesh(new THREE.BoxGeometry(0.05, alcoveHeight, doorWidthDouble), doorColorMat);
+        doorL.position.set(alcoveStart + 0.08, alcoveHeight / 2, openedDoorZ);
         doorL.castShadow = true;
         doorGroup.add(doorL);
         
-        const doorR = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorR.position.set(alcoveCenterX + doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
+        const doorR = new THREE.Mesh(new THREE.BoxGeometry(0.05, alcoveHeight, doorWidthDouble), doorColorMat);
+        doorR.position.set(alcoveEnd - 0.08, alcoveHeight / 2, openedDoorZ);
         doorR.castShadow = true;
         doorGroup.add(doorR);
 
         // --- ★ご指摘の取っ手を復元 ---
         const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
         const handleL = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleL.position.set(alcoveCenterX - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
+        handleL.rotation.x = Math.PI / 2;
+        handleL.position.set(alcoveStart + 0.12, alcoveHeight / 2, mainHallStartZ - 0.26);
         doorGroup.add(handleL);
         
         const handleR = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleR.position.set(alcoveCenterX + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
+        handleR.rotation.x = Math.PI / 2;
+        handleR.position.set(alcoveEnd - 0.12, alcoveHeight / 2, mainHallStartZ - 0.26);
         doorGroup.add(handleR);
 
         scene.add(doorGroup);
@@ -2867,6 +2955,14 @@
                 const zNewHallBound = entranceEndZ - ENTRANCE_LAYOUT.walkBackInset;
                 const alcoveAllowedLeft = alcoveStart + 0.6; 
                 const alcoveAllowedRight = alcoveEnd - 0.6;  
+                const mainHallAllowedLeft = alcoveStart + 0.45;
+                const mainHallAllowedRight = alcoveEnd - 0.45;
+                const mainHallAllowedStartZ = roomDepth / 2 + 0.55;
+                const mainHallAllowedEndZ = mainHallEndZ - 0.45;
+                const turnHallAllowedLeft = alcoveEnd - 0.4;
+                const turnHallAllowedRight = mainHallRightEndX - 0.55;
+                const turnHallAllowedMinZ = mainHallTurnStartZ + 0.3;
+                const turnHallAllowedMaxZ = mainHallEndZ - 0.45;
                 const leftNicheAllowedLeft = leftNicheStart + 0.4;
                 const leftNicheAllowedRight = leftNicheEnd - 0.4;
                 const newHallAllowedLeft = newDoorStart + 0.25;
@@ -2874,6 +2970,12 @@
                 const entranceWalkLeft = entranceLeftX + ENTRANCE_LAYOUT.walkLeftInset;
                 const entranceWalkRight = entranceRightX - ENTRANCE_LAYOUT.walkRightInset;
                 const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
+                const inMainHallStraight = camera.position.z > mainHallAllowedStartZ
+                    && camera.position.x > mainHallAllowedLeft
+                    && camera.position.x < mainHallAllowedRight;
+                const inMainHallTurn = camera.position.x > turnHallAllowedLeft
+                    && camera.position.z > turnHallAllowedMinZ
+                    && camera.position.z < turnHallAllowedMaxZ + 0.35;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35 && camera.position.z < zNewHallBound + 0.1;
@@ -2882,6 +2984,15 @@
                     if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
                     if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
                     if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
+                } else if (inMainHallTurn) {
+                    if (camera.position.x < turnHallAllowedLeft) camera.position.x = turnHallAllowedLeft;
+                    if (camera.position.x > turnHallAllowedRight) camera.position.x = turnHallAllowedRight;
+                    if (camera.position.z < turnHallAllowedMinZ) camera.position.z = turnHallAllowedMinZ;
+                    if (camera.position.z > turnHallAllowedMaxZ) camera.position.z = turnHallAllowedMaxZ;
+                } else if (inMainHallStraight) {
+                    if (camera.position.x < mainHallAllowedLeft) camera.position.x = mainHallAllowedLeft;
+                    if (camera.position.x > mainHallAllowedRight) camera.position.x = mainHallAllowedRight;
+                    if (camera.position.z > mainHallAllowedEndZ) camera.position.z = mainHallAllowedEndZ;
                 } else if (inAlcoveMouth) {
                     if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
                 } else if (inLeftNicheMouth) {
