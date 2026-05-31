@@ -587,6 +587,8 @@
         const newDoorX = -11.8;
         const newDoorWidth = 1.4;
         const newDoorHeight = 2.4 + wallFixtureHeightBoost;
+        const entranceDoorFrameThickness = 0.08;
+        const nicheCornerFrontGlassEndX = -13.5;
         const newDoorStart = newDoorX - newDoorWidth / 2;
         const newDoorEnd = newDoorX + newDoorWidth / 2;
 
@@ -638,11 +640,13 @@
             createWall(meetingDoorWidth, meetingDoorHeaderHeight, 0.2, doorX, meetingDoorHeight + meetingDoorHeaderHeight / 2, roomDepth / 2);
         });
 
-        const wall1DoorSideWidth = newDoorStart - leftNicheEnd;
-        createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
+        const wall1DoorSideWidth = newDoorStart - Math.max(leftNicheEnd, nicheCornerFrontGlassEndX);
+        if (wall1DoorSideWidth > 0.01) {
+            createWall(wall1DoorSideWidth, roomHeight, 0.2, Math.max(leftNicheEnd, nicheCornerFrontGlassEndX) + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
+        }
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+        // 共有壁は後続の玄関寸法が確定してから、くぼみ側から中が見えるガラス壁として作る。
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
         createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
@@ -1124,9 +1128,84 @@
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
-        // くぼみ右端と玄関左端の共有壁は、くぼみ側で作った壁を使い、奥側の不足分だけ延長する。
-        // 同じ境界に2枚の壁を重ねないことで、厚みの二重化と今後の修正漏れを防ぐ。
-        createXWallSegment(sharedNicheEntranceWallX, leftNicheBackZ, entranceEndZ, 0xd8d5ca);
+        // X=-14.30の角からL字風に、くぼみ側面と玄関手前面をガラス張りにする。
+        // 高さはガラス出入口のガラス面(newDoorHeight - 枠厚)に合わせ、埋め込みガラスなので中桟は入れない。
+        function createNicheEntranceGlassWall() {
+            const glassBottomY = 0;
+            const glassHeight = newDoorHeight - entranceDoorFrameThickness;
+            const glassCenterY = glassBottomY + glassHeight / 2;
+            const frameThickness = 0.04;
+            const frameDepth = 0.085;
+            const paneThickness = 0.03;
+            const glassMat = new THREE.MeshStandardMaterial({
+                color: 0xdff7ff,
+                transparent: true,
+                opacity: 0.18,
+                roughness: 0.02,
+                metalness: 0.08,
+                emissive: 0xffffff,
+                emissiveIntensity: 0.05,
+                side: THREE.DoubleSide,
+                depthWrite: false
+            });
+            const grayFrameMat = new THREE.MeshStandardMaterial({ color: 0x34383c, roughness: 0.52, metalness: 0.08 });
+
+            function addXGlassWall(x, startZ, endZ) {
+                const length = endZ - startZ;
+                if (length <= 0.01) return;
+                const centerZ = (startZ + endZ) / 2;
+                const glassPane = new THREE.Mesh(new THREE.BoxGeometry(paneThickness, glassHeight, length), glassMat);
+                glassPane.position.set(x, glassCenterY, centerZ);
+                glassPane.renderOrder = 2;
+                scene.add(glassPane);
+
+                [startZ, endZ].forEach((z) => {
+                    const verticalFrame = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, glassHeight + frameThickness, frameThickness), grayFrameMat);
+                    verticalFrame.position.set(x, glassCenterY, z);
+                    verticalFrame.castShadow = true;
+                    verticalFrame.receiveShadow = true;
+                    scene.add(verticalFrame);
+                });
+
+                [glassBottomY, glassBottomY + glassHeight].forEach((y) => {
+                    const horizontalFrame = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameThickness, length + frameThickness), grayFrameMat);
+                    horizontalFrame.position.set(x, y, centerZ);
+                    horizontalFrame.castShadow = true;
+                    horizontalFrame.receiveShadow = true;
+                    scene.add(horizontalFrame);
+                });
+            }
+
+            function addZGlassWall(z, startX, endX) {
+                const width = endX - startX;
+                if (width <= 0.01) return;
+                const centerX = (startX + endX) / 2;
+                const glassPane = new THREE.Mesh(new THREE.BoxGeometry(width, glassHeight, paneThickness), glassMat);
+                glassPane.position.set(centerX, glassCenterY, z);
+                glassPane.renderOrder = 2;
+                scene.add(glassPane);
+
+                [startX, endX].forEach((x) => {
+                    const verticalFrame = new THREE.Mesh(new THREE.BoxGeometry(frameThickness, glassHeight + frameThickness, frameDepth), grayFrameMat);
+                    verticalFrame.position.set(x, glassCenterY, z);
+                    verticalFrame.castShadow = true;
+                    verticalFrame.receiveShadow = true;
+                    scene.add(verticalFrame);
+                });
+
+                [glassBottomY, glassBottomY + glassHeight].forEach((y) => {
+                    const horizontalFrame = new THREE.Mesh(new THREE.BoxGeometry(width + frameThickness, frameThickness, frameDepth), grayFrameMat);
+                    horizontalFrame.position.set(centerX, y, z);
+                    horizontalFrame.castShadow = true;
+                    horizontalFrame.receiveShadow = true;
+                    scene.add(horizontalFrame);
+                });
+            }
+
+            addXGlassWall(sharedNicheEntranceWallX, entranceStartZ + 0.05, entranceEndZ - 0.12);
+            addZGlassWall(entranceStartZ, leftNicheEnd, nicheCornerFrontGlassEndX);
+        }
+        createNicheEntranceGlassWall();
         createXWallSegment(entranceRightX + 0.1, entranceStartZ, entranceEndZ, 0xd8d5ca);
         createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
         createWall(entranceWidth + 0.4, 0.2, entranceDepth, entranceCenterX, roomHeight, entranceCenterZ, 0xf7f7f2);
@@ -1253,7 +1332,7 @@
         // --- ドアフレームとガラス ---
         const dFrameGroup = new THREE.Group();
         const dFrameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
-        const dFrameThick = 0.08;
+        const dFrameThick = entranceDoorFrameThickness;
         const dFrameDepth = 0.22;
         
         const dLeft = new THREE.Mesh(new THREE.BoxGeometry(dFrameThick, newDoorHeight, dFrameDepth), dFrameMat);
