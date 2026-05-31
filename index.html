@@ -642,7 +642,72 @@
         createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+
+        function createXWallGlassPanel(centerX, wallStartZ, wallEndZ, panelStartZ, panelEndZ, panelBottomY, panelTopY) {
+            const wallColor = 0xd0d8e8;
+            const panelDepth = panelEndZ - panelStartZ;
+            const panelHeight = panelTopY - panelBottomY;
+            const wallThickness = 0.2;
+            const frameThickness = 0.08;
+
+            createXWallSegment(centerX, wallStartZ, panelStartZ, wallColor);
+            createXWallSegment(centerX, panelEndZ, wallEndZ, wallColor);
+
+            if (panelBottomY > 0.01) {
+                createWall(wallThickness, panelBottomY, panelDepth, centerX, panelBottomY / 2, panelStartZ + panelDepth / 2, wallColor);
+            }
+            if (roomHeight - panelTopY > 0.01) {
+                createWall(wallThickness, roomHeight - panelTopY, panelDepth, centerX, panelTopY + (roomHeight - panelTopY) / 2, panelStartZ + panelDepth / 2, wallColor);
+            }
+
+            const clearGlassMat = new THREE.MeshStandardMaterial({
+                color: 0xdaf7ff,
+                transparent: true,
+                opacity: 0.18,
+                roughness: 0.02,
+                metalness: 0.05,
+                side: THREE.DoubleSide
+            });
+            const panelCenterY = panelBottomY + panelHeight / 2;
+            const panelCenterZ = panelStartZ + panelDepth / 2;
+            const glassPane = new THREE.Mesh(new THREE.BoxGeometry(0.035, panelHeight, panelDepth), clearGlassMat);
+            glassPane.position.set(centerX, panelCenterY, panelCenterZ);
+            scene.add(glassPane);
+
+            const blackFrameMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.42, metalness: 0.08 });
+            const frameDepth = 0.16;
+            const sideFrameGeo = new THREE.BoxGeometry(frameDepth, panelHeight + frameThickness * 2, frameThickness);
+            [panelStartZ, panelEndZ].forEach((z) => {
+                const frame = new THREE.Mesh(sideFrameGeo, blackFrameMat);
+                frame.position.set(centerX, panelCenterY, z);
+                scene.add(frame);
+            });
+            const railGeo = new THREE.BoxGeometry(frameDepth, frameThickness, panelDepth + frameThickness * 2);
+            [panelBottomY, panelTopY].forEach((y) => {
+                const frame = new THREE.Mesh(railGeo, blackFrameMat);
+                frame.position.set(centerX, y, panelCenterZ);
+                scene.add(frame);
+            });
+            const mullion = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, panelHeight, frameThickness * 0.75), blackFrameMat);
+            mullion.position.set(centerX, panelCenterY, panelCenterZ);
+            scene.add(mullion);
+        }
+
+        // X=-14.30のくぼみ側から玄関がはっきり見えるよう、共有壁を黒縁の大きなガラス面にする。
+        // くぼみの奥行きがZ=7.0〜10.6のため、指定の「Z 5〜10程度」は壁面に沿う最大範囲としてZ=7.05〜10.45を採用。
+        const leftNicheGlassBottomY = 0.55;
+        const leftNicheGlassTopY = 3.55;
+        const leftNicheGlassStartZ = frontExtensionStartZ + 0.05;
+        const leftNicheGlassEndZ = leftNicheBackZ - 0.15;
+        createXWallGlassPanel(
+            sharedNicheEntranceWallX,
+            frontExtensionStartZ,
+            leftNicheBackZ,
+            leftNicheGlassStartZ,
+            leftNicheGlassEndZ,
+            leftNicheGlassBottomY,
+            leftNicheGlassTopY
+        );
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
         createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
