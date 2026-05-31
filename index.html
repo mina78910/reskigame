@@ -611,6 +611,24 @@
         const lockerBankStartX = newDoorEnd + ENTRANCE_LAYOUT.lockerGapFromDoor;
         const sharedNicheEntranceWallX = leftNicheEnd + 0.1;
 
+        // 今回追加するL字ガラス張りの基準座標。次回修正で再利用しやすいよう、
+        // 依頼値をそのまま定数化してから各パネルを生成する。
+        const LOBBY_GLASS_LAYOUT = Object.freeze({
+            cornerX: leftNicheEnd,
+            wallCenterX: sharedNicheEntranceWallX,
+            startZ: 5.0,
+            endZ: 10.0,
+            frontZ: 5.0,
+            endX: 13.5,
+            bottomY: 0.66,
+            topY: newDoorHeight,
+            thickness: 0.035,
+            frameThickness: 0.045,
+            frameDepth: 0.07
+        });
+        const lobbyGlassHeight = LOBBY_GLASS_LAYOUT.topY - LOBBY_GLASS_LAYOUT.bottomY;
+        const lobbyGlassCenterY = LOBBY_GLASS_LAYOUT.bottomY + lobbyGlassHeight / 2;
+
         const meetingDoorWidth = newDoorWidth;
         const meetingDoorHeight = baseMeetingDoorHeight + wallFixtureHeightBoost;
         const meetingDoorGap = 0.6;
@@ -642,7 +660,20 @@
         createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+        const sharedGlassWallStartZ = Math.max(frontExtensionStartZ, LOBBY_GLASS_LAYOUT.startZ);
+        const sharedGlassWallEndZ = Math.min(leftNicheBackZ, LOBBY_GLASS_LAYOUT.endZ);
+        if (sharedGlassWallStartZ > frontExtensionStartZ) {
+            createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, sharedGlassWallStartZ);
+        }
+        if (sharedGlassWallEndZ > sharedGlassWallStartZ) {
+            const sharedGlassWallDepth = sharedGlassWallEndZ - sharedGlassWallStartZ;
+            const sharedGlassWallCenterZ = sharedGlassWallStartZ + sharedGlassWallDepth / 2;
+            createWall(0.2, LOBBY_GLASS_LAYOUT.bottomY, sharedGlassWallDepth, sharedNicheEntranceWallX, LOBBY_GLASS_LAYOUT.bottomY / 2, sharedGlassWallCenterZ);
+            createWall(0.2, roomHeight - LOBBY_GLASS_LAYOUT.topY, sharedGlassWallDepth, sharedNicheEntranceWallX, LOBBY_GLASS_LAYOUT.topY + (roomHeight - LOBBY_GLASS_LAYOUT.topY) / 2, sharedGlassWallCenterZ);
+        }
+        if (sharedGlassWallEndZ < leftNicheBackZ) {
+            createXWallSegment(sharedNicheEntranceWallX, sharedGlassWallEndZ, leftNicheBackZ);
+        }
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
         createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
@@ -661,6 +692,97 @@
         const leftNicheLight = new THREE.PointLight(0xfff5e6, 0.35, 5);
         leftNicheLight.position.set(leftNicheCenterX, roomHeight - 0.35, roomDepth / 2 + leftNicheDepth / 2);
         scene.add(leftNicheLight);
+
+        function createLShapedEmbeddedLobbyGlass() {
+            const glassPanelMat = new THREE.MeshStandardMaterial({
+                color: 0xe6f7ff,
+                transparent: true,
+                opacity: 0.18,
+                roughness: 0.05,
+                metalness: 0.08,
+                side: THREE.DoubleSide
+            });
+            const glassFrameMat = new THREE.MeshStandardMaterial({ color: 0x73777d, roughness: 0.42, metalness: 0.18 });
+
+            function addHorizontalFramesForXPanel(length, centerX, z) {
+                [LOBBY_GLASS_LAYOUT.bottomY, LOBBY_GLASS_LAYOUT.topY].forEach((y) => {
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(length, LOBBY_GLASS_LAYOUT.frameThickness, LOBBY_GLASS_LAYOUT.frameDepth),
+                        glassFrameMat
+                    );
+                    frame.position.set(centerX, y, z);
+                    scene.add(frame);
+                });
+            }
+
+            function addVerticalFramesForXPanel(xPositions, z) {
+                xPositions.forEach((x) => {
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(LOBBY_GLASS_LAYOUT.frameThickness, lobbyGlassHeight, LOBBY_GLASS_LAYOUT.frameDepth),
+                        glassFrameMat
+                    );
+                    frame.position.set(x, lobbyGlassCenterY, z);
+                    scene.add(frame);
+                });
+            }
+
+            function addHorizontalFramesForZPanel(length, x, centerZ) {
+                [LOBBY_GLASS_LAYOUT.bottomY, LOBBY_GLASS_LAYOUT.topY].forEach((y) => {
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(LOBBY_GLASS_LAYOUT.frameDepth, LOBBY_GLASS_LAYOUT.frameThickness, length),
+                        glassFrameMat
+                    );
+                    frame.position.set(x, y, centerZ);
+                    scene.add(frame);
+                });
+            }
+
+            function addVerticalFramesForZPanel(x, zPositions) {
+                zPositions.forEach((z) => {
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(LOBBY_GLASS_LAYOUT.frameDepth, lobbyGlassHeight, LOBBY_GLASS_LAYOUT.frameThickness),
+                        glassFrameMat
+                    );
+                    frame.position.set(x, lobbyGlassCenterY, z);
+                    scene.add(frame);
+                });
+            }
+
+            const frontGlassLength = LOBBY_GLASS_LAYOUT.endX - LOBBY_GLASS_LAYOUT.cornerX;
+            const frontGlassCenterX = LOBBY_GLASS_LAYOUT.cornerX + frontGlassLength / 2;
+            const frontGlass = new THREE.Mesh(
+                new THREE.BoxGeometry(frontGlassLength, lobbyGlassHeight, LOBBY_GLASS_LAYOUT.thickness),
+                glassPanelMat
+            );
+            frontGlass.position.set(frontGlassCenterX, lobbyGlassCenterY, LOBBY_GLASS_LAYOUT.frontZ);
+            frontGlass.renderOrder = 2;
+            scene.add(frontGlass);
+            addHorizontalFramesForXPanel(frontGlassLength, frontGlassCenterX, LOBBY_GLASS_LAYOUT.frontZ);
+            addVerticalFramesForXPanel([
+                LOBBY_GLASS_LAYOUT.cornerX,
+                LOBBY_GLASS_LAYOUT.cornerX + frontGlassLength / 3,
+                LOBBY_GLASS_LAYOUT.cornerX + frontGlassLength * 2 / 3,
+                LOBBY_GLASS_LAYOUT.endX
+            ], LOBBY_GLASS_LAYOUT.frontZ);
+
+            const sideGlassLength = LOBBY_GLASS_LAYOUT.endZ - LOBBY_GLASS_LAYOUT.startZ;
+            const sideGlassCenterZ = LOBBY_GLASS_LAYOUT.startZ + sideGlassLength / 2;
+            const sideGlass = new THREE.Mesh(
+                new THREE.BoxGeometry(LOBBY_GLASS_LAYOUT.thickness, lobbyGlassHeight, sideGlassLength),
+                glassPanelMat
+            );
+            sideGlass.position.set(LOBBY_GLASS_LAYOUT.cornerX, lobbyGlassCenterY, sideGlassCenterZ);
+            sideGlass.renderOrder = 2;
+            scene.add(sideGlass);
+            addHorizontalFramesForZPanel(sideGlassLength, LOBBY_GLASS_LAYOUT.cornerX, sideGlassCenterZ);
+            addVerticalFramesForZPanel(LOBBY_GLASS_LAYOUT.cornerX, [
+                LOBBY_GLASS_LAYOUT.startZ,
+                LOBBY_GLASS_LAYOUT.startZ + sideGlassLength / 2,
+                LOBBY_GLASS_LAYOUT.endZ
+            ]);
+        }
+
+        createLShapedEmbeddedLobbyGlass();
 
         function createMeetingRoomDoor(x, labelText) {
             const doorGroup = new THREE.Group();
