@@ -1409,7 +1409,7 @@
 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveStart - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveEnd + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
-        createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, roomDepth / 2 + alcoveDepth + 0.1); 
+        // 観音開きドアの先は廊下へ抜けるため、奥壁は作らず開口にする。
 
         const patchTex = carpetTex.clone();
         patchTex.needsUpdate = true;
@@ -1428,28 +1428,103 @@
         const doorGroup = new THREE.Group();
         const doorColorMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
         const doorWidthDouble = 1.4;
+        const openDoorZ = roomDepth / 2 + alcoveDepth - 0.05;
+        const openDoorAngle = Math.PI / 2.7;
         
         const doorL = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorL.position.set(alcoveCenterX - doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
+        doorL.position.set(alcoveStart + 0.12, alcoveHeight / 2, openDoorZ + 0.58);
+        doorL.rotation.y = -openDoorAngle;
         doorL.castShadow = true;
         doorGroup.add(doorL);
         
         const doorR = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorR.position.set(alcoveCenterX + doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
+        doorR.position.set(alcoveEnd - 0.12, alcoveHeight / 2, openDoorZ + 0.58);
+        doorR.rotation.y = openDoorAngle;
         doorR.castShadow = true;
         doorGroup.add(doorR);
 
         // --- ★ご指摘の取っ手を復元 ---
         const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
         const handleL = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleL.position.set(alcoveCenterX - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
+        handleL.position.set(alcoveStart + 0.42, alcoveHeight / 2, openDoorZ + 0.1);
+        handleL.rotation.y = -openDoorAngle;
         doorGroup.add(handleL);
         
         const handleR = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleR.position.set(alcoveCenterX + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
+        handleR.position.set(alcoveEnd - 0.42, alcoveHeight / 2, openDoorZ + 0.1);
+        handleR.rotation.y = openDoorAngle;
         doorGroup.add(handleR);
 
         scene.add(doorGroup);
+
+        // --- 観音開きドア奥の薄暗い廊下と、右折して玄関が見える通路 ---
+        const centralHallStartZ = roomDepth / 2 + alcoveDepth;
+        const centralHallEndZ = entranceEndZ;
+        const centralHallWidth = alcoveWidth;
+        const centralHallLeftX = alcoveCenterX - centralHallWidth / 2;
+        const centralHallRightX = alcoveCenterX + centralHallWidth / 2;
+        const centralHallCenterZ = (centralHallStartZ + centralHallEndZ) / 2;
+        const centralHallDepth = centralHallEndZ - centralHallStartZ;
+        const centralHallTurnStartZ = centralHallEndZ - 1.0;
+        const centralHallTurnWidth = 1.8;
+        const centralHallTurnEndX = roomWidth / 2 - 3.0;
+        const centralHallTurnCenterX = (centralHallRightX + centralHallTurnEndX) / 2;
+        const centralHallTurnCenterZ = centralHallEndZ - centralHallTurnWidth / 2;
+        const centralHallTurnLength = centralHallTurnEndX - centralHallRightX;
+
+        const centralHallTex = carpetTex.clone();
+        centralHallTex.needsUpdate = true;
+        centralHallTex.repeat.set(centralHallWidth / 4, centralHallDepth / 4);
+        const centralHallMat = new THREE.MeshStandardMaterial({ map: centralHallTex, roughness: 1.0 });
+        const centralHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(centralHallWidth, centralHallDepth), centralHallMat);
+        centralHallFloor.rotation.x = -Math.PI / 2;
+        centralHallFloor.position.set(alcoveCenterX, 0.002, centralHallCenterZ);
+        centralHallFloor.receiveShadow = true;
+        scene.add(centralHallFloor);
+
+        const turnHallTex = carpetTex.clone();
+        turnHallTex.needsUpdate = true;
+        turnHallTex.repeat.set(centralHallTurnLength / 4, centralHallTurnWidth / 4);
+        const turnHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(centralHallTurnLength, centralHallTurnWidth), new THREE.MeshStandardMaterial({ map: turnHallTex, roughness: 1.0 }));
+        turnHallFloor.rotation.x = -Math.PI / 2;
+        turnHallFloor.position.set(centralHallTurnCenterX, 0.003, centralHallTurnCenterZ);
+        turnHallFloor.receiveShadow = true;
+        scene.add(turnHallFloor);
+
+        createXWallSegment(centralHallLeftX - 0.1, centralHallStartZ, centralHallEndZ, 0xc7ced8);
+        createXWallSegment(centralHallRightX + 0.1, centralHallStartZ, centralHallTurnStartZ, 0xc7ced8);
+        createWall(centralHallWidth + 0.2, roomHeight, 0.2, alcoveCenterX - 0.1, roomHeight / 2, centralHallEndZ + 0.1, 0xc7ced8);
+        createWall(centralHallTurnLength + 0.2, roomHeight, 0.2, centralHallTurnCenterX, roomHeight / 2, centralHallEndZ - centralHallTurnWidth - 0.1, 0xc7ced8);
+        createWall(centralHallTurnLength + 0.2, roomHeight, 0.2, centralHallTurnCenterX, roomHeight / 2, centralHallEndZ + 0.1, 0xc7ced8);
+        createWall(0.2, roomHeight, centralHallTurnWidth, centralHallTurnEndX + 0.1, roomHeight / 2, centralHallTurnCenterZ, 0xd8d5ca);
+
+        const centralHallCeilingMat = new THREE.MeshStandardMaterial({ color: 0xd8dde5, roughness: 0.9, emissive: 0x050505 });
+        const centralHallCeiling = new THREE.Mesh(new THREE.PlaneGeometry(centralHallWidth, centralHallDepth), centralHallCeilingMat);
+        centralHallCeiling.rotation.x = Math.PI / 2;
+        centralHallCeiling.position.set(alcoveCenterX, roomHeight - 0.04, centralHallCenterZ);
+        scene.add(centralHallCeiling);
+        const turnHallCeiling = new THREE.Mesh(new THREE.PlaneGeometry(centralHallTurnLength, centralHallTurnWidth), centralHallCeilingMat);
+        turnHallCeiling.rotation.x = Math.PI / 2;
+        turnHallCeiling.position.set(centralHallTurnCenterX, roomHeight - 0.04, centralHallTurnCenterZ);
+        scene.add(turnHallCeiling);
+
+        const centralHallLight1 = new THREE.PointLight(0xb8c7de, 0.22, 5.2);
+        centralHallLight1.position.set(alcoveCenterX, roomHeight - 0.7, centralHallStartZ + 2.0);
+        scene.add(centralHallLight1);
+        const centralHallLight2 = new THREE.PointLight(0xb8c7de, 0.16, 5.0);
+        centralHallLight2.position.set(alcoveCenterX, roomHeight - 0.75, centralHallEndZ - 1.3);
+        scene.add(centralHallLight2);
+        const entranceGlimpseLight = new THREE.PointLight(0xffe5a8, 0.5, 7.5);
+        entranceGlimpseLight.position.set(centralHallTurnEndX - 1.0, roomHeight - 0.55, centralHallTurnCenterZ);
+        scene.add(entranceGlimpseLight);
+
+        const entranceGlimpseSign = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.9, 0.62),
+            new THREE.MeshStandardMaterial({ map: createReceptionLogoTexture(), transparent: true, roughness: 0.7, side: THREE.DoubleSide })
+        );
+        entranceGlimpseSign.rotation.y = -Math.PI / 2;
+        entranceGlimpseSign.position.set(centralHallTurnEndX - 0.02, 1.72, centralHallTurnCenterZ);
+        scene.add(entranceGlimpseSign);
 
         // ==========================================
         // メイン天井 
@@ -2877,13 +2952,37 @@
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35 && camera.position.z < zNewHallBound + 0.1;
+                const centralHallWalkLeft = centralHallLeftX + 0.45;
+                const centralHallWalkRight = centralHallRightX - 0.45;
+                const centralHallWalkEndZ = centralHallEndZ - 0.35;
+                const turnHallWalkMinX = centralHallRightX - 0.2;
+                const turnHallWalkMaxX = centralHallTurnEndX - 0.55;
+                const turnHallWalkMinZ = centralHallEndZ - centralHallTurnWidth + 0.32;
+                const turnHallWalkMaxZ = centralHallEndZ - 0.32;
+                const inCentralHall = camera.position.z > centralHallStartZ - 0.2
+                    && camera.position.z < centralHallWalkEndZ + 0.25
+                    && camera.position.x > centralHallWalkLeft - 0.2
+                    && camera.position.x < centralHallWalkRight + 0.2;
+                const inCentralTurn = camera.position.x > turnHallWalkMinX - 0.2
+                    && camera.position.x < turnHallWalkMaxX + 0.2
+                    && camera.position.z > turnHallWalkMinZ - 0.2
+                    && camera.position.z < turnHallWalkMaxZ + 0.2;
 
                 if (inEntranceArea) {
                     if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
                     if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
                     if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
+                } else if (inCentralTurn) {
+                    if (camera.position.x < turnHallWalkMinX) camera.position.x = turnHallWalkMinX;
+                    if (camera.position.x > turnHallWalkMaxX) camera.position.x = turnHallWalkMaxX;
+                    if (camera.position.z < turnHallWalkMinZ) camera.position.z = turnHallWalkMinZ;
+                    if (camera.position.z > turnHallWalkMaxZ) camera.position.z = turnHallWalkMaxZ;
+                } else if (inCentralHall) {
+                    if (camera.position.x < centralHallWalkLeft) camera.position.x = centralHallWalkLeft;
+                    if (camera.position.x > centralHallWalkRight) camera.position.x = centralHallWalkRight;
+                    if (camera.position.z > centralHallWalkEndZ) camera.position.z = centralHallWalkEndZ;
                 } else if (inAlcoveMouth) {
-                    if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
+                    if (camera.position.z > centralHallStartZ + 0.15) camera.position.z = centralHallStartZ + 0.15;
                 } else if (inLeftNicheMouth) {
                     if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
                 } else if (inNewHallMouth) {
