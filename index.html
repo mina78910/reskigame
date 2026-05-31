@@ -593,20 +593,22 @@
         // ドアを背にして左側（-X方向）へ、ドア1枚分離した位置に少し狭めたくぼみを追加
         const leftNicheWidthReduction = 0.4;
         const leftNicheWidth = newDoorWidth * 2 - leftNicheWidthReduction;
-        const leftNicheDepth = 3.6;
+        const frontExtensionStartZ = roomDepth / 2;
+        const entranceBackZ = 15.0;
+        const frontExtensionDepth = entranceBackZ - frontExtensionStartZ;
+        const leftNicheDepth = frontExtensionDepth;
         const leftNicheEnd = newDoorStart - newDoorWidth - leftNicheWidthReduction;
         const leftNicheStart = leftNicheEnd - leftNicheWidth;
         const leftNicheCenterX = (leftNicheStart + leftNicheEnd) / 2;
 
         const ENTRANCE_LAYOUT = Object.freeze({
-            depth: 8.0,
+            depth: frontExtensionDepth,
             lockerGapFromDoor: 0.3,
             rightOffsetFromLocker: 1.7,
             walkLeftInset: 0.85,
             walkRightInset: 0.45,
             walkBackInset: 0.6
         });
-        const frontExtensionStartZ = roomDepth / 2;
         const leftNicheBackZ = frontExtensionStartZ + leftNicheDepth;
         const lockerBankStartX = newDoorEnd + ENTRANCE_LAYOUT.lockerGapFromDoor;
         const sharedNicheEntranceWallX = leftNicheEnd + 0.1;
@@ -638,13 +640,115 @@
             createWall(meetingDoorWidth, meetingDoorHeaderHeight, 0.2, doorX, meetingDoorHeight + meetingDoorHeaderHeight / 2, roomDepth / 2);
         });
 
-        const wall1DoorSideWidth = newDoorStart - leftNicheEnd;
-        createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
+        const entranceInsetGlassBottomY = 0.66;
+        const entranceInsetGlassTopY = newDoorHeight;
+        const entranceInsetGlassHeight = entranceInsetGlassTopY - entranceInsetGlassBottomY;
+        const entranceInsetGlass = Object.freeze({
+            bottomY: entranceInsetGlassBottomY,
+            topY: entranceInsetGlassTopY,
+            height: entranceInsetGlassHeight,
+            centerY: entranceInsetGlassBottomY + entranceInsetGlassHeight / 2,
+            verticalX: leftNicheEnd,
+            verticalWallCenterX: sharedNicheEntranceWallX,
+            frontZ: roomDepth / 2,
+            verticalStartZ: roomDepth / 2,
+            verticalEndZ: 10.0,
+            frontStartX: leftNicheEnd,
+            frontEndX: -13.0,
+            frameThickness: 0.045,
+            glassThickness: 0.02,
+            opacity: 0.18
+        });
+
+        function createWallWithGlassOpeningZ(startX, endX, centerZ, color = 0xd0d8e8) {
+            const width = endX - startX;
+            if (width <= 0.01) return;
+            createWall(width, entranceInsetGlass.bottomY, 0.2, startX + width / 2, entranceInsetGlass.bottomY / 2, centerZ, color);
+            const upperHeight = roomHeight - entranceInsetGlass.topY;
+            if (upperHeight > 0.01) {
+                createWall(width, upperHeight, 0.2, startX + width / 2, entranceInsetGlass.topY + upperHeight / 2, centerZ, color);
+            }
+        }
+
+        function createWallWithGlassOpeningX(centerX, startZ, endZ, color = 0xd0d8e8) {
+            const depth = endZ - startZ;
+            if (depth <= 0.01) return;
+            createWall(0.2, entranceInsetGlass.bottomY, depth, centerX, entranceInsetGlass.bottomY / 2, startZ + depth / 2, color);
+            const upperHeight = roomHeight - entranceInsetGlass.topY;
+            if (upperHeight > 0.01) {
+                createWall(0.2, upperHeight, depth, centerX, entranceInsetGlass.topY + upperHeight / 2, startZ + depth / 2, color);
+            }
+        }
+
+        function createInsetGlassPanelZ(startX, endX, centerZ) {
+            const width = endX - startX;
+            const centerX = startX + width / 2;
+            const glass = new THREE.Mesh(
+                new THREE.BoxGeometry(width, entranceInsetGlass.height, entranceInsetGlass.glassThickness),
+                entranceInsetGlassMat
+            );
+            glass.position.set(centerX, entranceInsetGlass.centerY, centerZ);
+            scene.add(glass);
+
+            const frameDepth = entranceInsetGlass.glassThickness * 1.8;
+            const frameY = entranceInsetGlass.frameThickness;
+            [entranceInsetGlass.bottomY, entranceInsetGlass.topY].forEach((y) => {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(width + entranceInsetGlass.frameThickness, frameY, frameDepth), entranceInsetFrameMat);
+                frame.position.set(centerX, y, centerZ);
+                scene.add(frame);
+            });
+            [startX, endX].forEach((x) => {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(entranceInsetGlass.frameThickness, entranceInsetGlass.height, frameDepth), entranceInsetFrameMat);
+                frame.position.set(x, entranceInsetGlass.centerY, centerZ);
+                scene.add(frame);
+            });
+        }
+
+        function createInsetGlassPanelX(surfaceX, startZ, endZ) {
+            const depth = endZ - startZ;
+            const centerZ = startZ + depth / 2;
+            const glass = new THREE.Mesh(
+                new THREE.BoxGeometry(entranceInsetGlass.glassThickness, entranceInsetGlass.height, depth),
+                entranceInsetGlassMat
+            );
+            glass.position.set(surfaceX, entranceInsetGlass.centerY, centerZ);
+            scene.add(glass);
+
+            const frameDepth = entranceInsetGlass.glassThickness * 1.8;
+            const frameY = entranceInsetGlass.frameThickness;
+            [entranceInsetGlass.bottomY, entranceInsetGlass.topY].forEach((y) => {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, frameY, depth + entranceInsetGlass.frameThickness), entranceInsetFrameMat);
+                frame.position.set(surfaceX, y, centerZ);
+                scene.add(frame);
+            });
+            [startZ, endZ].forEach((z) => {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(frameDepth, entranceInsetGlass.height, entranceInsetGlass.frameThickness), entranceInsetFrameMat);
+                frame.position.set(surfaceX, entranceInsetGlass.centerY, z);
+                scene.add(frame);
+            });
+        }
+
+        const entranceInsetGlassMat = new THREE.MeshStandardMaterial({
+            color: 0xdce8f2,
+            transparent: true,
+            opacity: entranceInsetGlass.opacity,
+            roughness: 0.06,
+            metalness: 0.08,
+            side: THREE.DoubleSide
+        });
+        const entranceInsetFrameMat = new THREE.MeshStandardMaterial({ color: 0x6f7478, roughness: 0.5, metalness: 0.12 });
+
+        createWallWithGlassOpeningZ(entranceInsetGlass.frontStartX, entranceInsetGlass.frontEndX, entranceInsetGlass.frontZ);
+        const remainingWall1StartX = entranceInsetGlass.frontEndX;
+        const remainingWall1Width = newDoorStart - remainingWall1StartX;
+        if (remainingWall1Width > 0.01) {
+            createWall(remainingWall1Width, roomHeight, 0.2, remainingWall1StartX + remainingWall1Width / 2, roomHeight / 2, roomDepth / 2);
+        }
 
         createXWallSegment(leftNicheStart - 0.1, frontExtensionStartZ, leftNicheBackZ);
-        createXWallSegment(sharedNicheEntranceWallX, frontExtensionStartZ, leftNicheBackZ);
+        createWallWithGlassOpeningX(entranceInsetGlass.verticalWallCenterX, entranceInsetGlass.verticalStartZ, entranceInsetGlass.verticalEndZ);
+        createXWallSegment(sharedNicheEntranceWallX, entranceInsetGlass.verticalEndZ, leftNicheBackZ);
         createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, leftNicheBackZ + 0.1, 0xe0e0e0);
-        createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, frontExtensionStartZ + leftNicheDepth / 2, 0xffffff);
 
         const leftNicheTex = carpetTex.clone();
         leftNicheTex.needsUpdate = true;
@@ -772,7 +876,7 @@
         function createSideWallMeetingRoomInterior() {
             const sideRoomWidth = 3.0;
             const sideRoomDepth = 2.5;
-            const sideRoomHeight = 3.0;
+            const sideRoomHeight = roomHeight;
             const sideRoomCenterX = -roomWidth / 2 - sideRoomWidth / 2;
             const sideRoomCenterZ = 2.0;
             const roomFloorTex = carpetTex.clone();
@@ -790,7 +894,6 @@
             createWall(sideRoomWidth, sideRoomHeight, 0.2, sideRoomCenterX, sideRoomHeight / 2, sideRoomCenterZ - sideRoomDepth / 2 - 0.1, 0xe8edf3);
             createWall(sideRoomWidth, sideRoomHeight, 0.2, sideRoomCenterX, sideRoomHeight / 2, sideRoomCenterZ + sideRoomDepth / 2 + 0.1, 0xe8edf3);
             createWall(0.2, sideRoomHeight, sideRoomDepth + 0.4, sideRoomCenterX - sideRoomWidth / 2 - 0.1, sideRoomHeight / 2, sideRoomCenterZ, 0xe8edf3);
-            createWall(sideRoomWidth, 0.2, sideRoomDepth, sideRoomCenterX, sideRoomHeight + 0.1, sideRoomCenterZ, 0xffffff);
 
             const tableMat = new THREE.MeshStandardMaterial({ color: 0xd6b38c, roughness: 0.45 });
             const table = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 0.9), tableMat);
@@ -820,8 +923,8 @@
 
         function createMeetingRoomInterior(x, accentColor) {
             const meetingRoomWidth = meetingDoorWidth + 1.0;
-            const meetingRoomDepth = 3.2;
-            const meetingRoomHeight = 3.0;
+            const meetingRoomDepth = frontExtensionDepth;
+            const meetingRoomHeight = roomHeight;
             const meetingRoomCenterZ = roomDepth / 2 + meetingRoomDepth / 2;
             const roomFloorTex = carpetTex.clone();
             roomFloorTex.needsUpdate = true;
@@ -838,7 +941,6 @@
             createWall(0.2, meetingRoomHeight, meetingRoomDepth, x - meetingRoomWidth / 2 - 0.1, meetingRoomHeight / 2, meetingRoomCenterZ, 0xe8edf3);
             createWall(0.2, meetingRoomHeight, meetingRoomDepth, x + meetingRoomWidth / 2 + 0.1, meetingRoomHeight / 2, meetingRoomCenterZ, 0xe8edf3);
             createWall(meetingRoomWidth + 0.4, meetingRoomHeight, 0.2, x, meetingRoomHeight / 2, roomDepth / 2 + meetingRoomDepth + 0.1, 0xe8edf3);
-            createWall(meetingRoomWidth + 0.4, 0.2, meetingRoomDepth, x, meetingRoomHeight + 0.1, meetingRoomCenterZ, 0xffffff);
 
             const tableMat = new THREE.MeshStandardMaterial({ color: 0xd6b38c, roughness: 0.45 });
             const table = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.08, 1.0), tableMat);
@@ -1060,7 +1162,7 @@
         createWall(newDoorWidth, doorHeaderHeight, 0.2, newDoorX, newDoorHeight + doorHeaderHeight / 2, roomDepth / 2);
 
         // --- ガラス出入口の奥にある玄関スペース ---
-        // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥行き約8pt・左右幅はおおよそ X=-14〜X=-9 に収める。
+        // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥は Z=15 まで伸ばす。
         // 左端は隣のくぼみ開始位置、右端はロッカー側の端に連動させ、周辺レイアウト変更時も内装が一緒に追従するようにする。
         const entranceDepth = ENTRANCE_LAYOUT.depth;
         const newHallDepth = entranceDepth;
@@ -1127,9 +1229,10 @@
         // くぼみ右端と玄関左端の共有壁は、くぼみ側で作った壁を使い、奥側の不足分だけ延長する。
         // 同じ境界に2枚の壁を重ねないことで、厚みの二重化と今後の修正漏れを防ぐ。
         createXWallSegment(sharedNicheEntranceWallX, leftNicheBackZ, entranceEndZ, 0xd8d5ca);
+        createInsetGlassPanelX(entranceInsetGlass.verticalX, entranceInsetGlass.verticalStartZ, entranceInsetGlass.verticalEndZ);
+        createInsetGlassPanelZ(entranceInsetGlass.frontStartX, entranceInsetGlass.frontEndX, entranceInsetGlass.frontZ);
         createXWallSegment(entranceRightX + 0.1, entranceStartZ, entranceEndZ, 0xd8d5ca);
         createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
-        createWall(entranceWidth + 0.4, 0.2, entranceDepth, entranceCenterX, roomHeight, entranceCenterZ, 0xf7f7f2);
 
         const entranceWarmLight = new THREE.PointLight(0xffe5a8, 0.52, 8);
         entranceWarmLight.position.set(entranceLeftX + 1.2, 0.42, entranceStartZ + 3.5);
@@ -1298,7 +1401,6 @@
 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveStart - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveEnd + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
-        createWall(alcoveWidth, 0.2, alcoveDepth, alcoveCenterX, alcoveHeight + 0.1, roomDepth / 2 + alcoveDepth / 2, 0xfafafa); 
         createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, roomDepth / 2 + alcoveDepth + 0.1); 
 
         const patchTex = carpetTex.clone();
@@ -1348,19 +1450,25 @@
         ceilingGroup.position.y = roomHeight - 0.05; 
         scene.add(ceilingGroup);
 
-        const ceilingPlaneGeo = new THREE.PlaneGeometry(roomWidth, roomDepth);
+        const mainCeilingMinZ = backWallZ;
+        const mainCeilingMaxZ = entranceEndZ;
+        const mainCeilingDepth = mainCeilingMaxZ - mainCeilingMinZ;
+        const mainCeilingCenterZ = (mainCeilingMinZ + mainCeilingMaxZ) / 2;
+        const ceilingPlaneGeo = new THREE.PlaneGeometry(roomWidth, mainCeilingDepth);
         const ceilingPlaneMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, emissive: 0x222222 });
         const ceilingPlane = new THREE.Mesh(ceilingPlaneGeo, ceilingPlaneMat);
         ceilingPlane.rotation.x = Math.PI / 2;
+        ceilingPlane.position.z = mainCeilingCenterZ;
         ceilingPlane.receiveShadow = true;
         ceilingGroup.add(ceilingPlane);
 
         const gridMat = new THREE.LineBasicMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.3 });
         const gridWidthUnits = roomWidth / 2.0; 
-        const gridDepthUnits = Math.round(roomDepth / 1.5); 
+        const gridDepthUnits = Math.round(mainCeilingDepth / 1.5);
         const ceilingGrid = new THREE.GridHelper(roomWidth, gridWidthUnits, 0xcccccc, 0xcccccc);
         ceilingGrid.position.y = -0.01; 
-        ceilingGrid.scale.set(1, 1, roomDepth / roomWidth);
+        ceilingGrid.position.z = mainCeilingCenterZ;
+        ceilingGrid.scale.set(1, 1, mainCeilingDepth / roomWidth);
         ceilingGrid.material = gridMat;
         ceilingGroup.add(ceilingGrid);
 
@@ -1383,7 +1491,7 @@
         const lightSpacingX = 6;
         const lightSpacingZ = 4; 
         for (let x = -roomWidth / 2 + lightSpacingX / 2; x < roomWidth / 2; x += lightSpacingX) {
-            for (let z = -roomDepth / 2 + lightSpacingZ / 2; z < roomDepth / 2; z += lightSpacingZ) {
+            for (let z = mainCeilingMinZ + lightSpacingZ / 2; z < mainCeilingMaxZ; z += lightSpacingZ) {
                 if (Math.random() > 0.05) {
                     createCeilingLight(x, z);
                 }
