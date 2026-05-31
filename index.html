@@ -1784,98 +1784,106 @@
             return chairGroup;
         }
 
-        function createCafeTable() {
+        function setMeshShadow(mesh, receive = false) {
+            mesh.castShadow = true;
+            mesh.receiveShadow = receive;
+            return mesh;
+        }
+
+        function createFreeSeatTable() {
             const group = new THREE.Group();
-            const topGeo = new THREE.BoxGeometry(1.2, 0.04, 1.2);
-            const topMat = new THREE.MeshStandardMaterial({ color: 0xf5deb3, roughness: 0.3 }); 
-            const top = new THREE.Mesh(topGeo, topMat);
-            top.position.y = 0.74;
-            top.castShadow = true;
-            top.receiveShadow = true;
+            const tableWidth = 1.35;
+            const tableDepth = 1.35;
+            const tableHeight = 0.72;
+            const topThickness = 0.06;
+            const topMat = new THREE.MeshStandardMaterial({ color: 0x8a8173, roughness: 0.62 });
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x6f685e, roughness: 0.72, metalness: 0.05 });
+            const rollerMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.48, metalness: 0.25 });
+
+            const top = new THREE.Mesh(new THREE.BoxGeometry(tableWidth, topThickness, tableDepth), topMat);
+            top.position.y = tableHeight;
+            setMeshShadow(top, true);
             group.add(top);
-            
-            const legGeo = new THREE.CylinderGeometry(0.02, 0.012, 0.74);
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 }); 
-            const offsets = [
-                [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]
-            ];
-            offsets.forEach(pos => {
+
+            const legGeo = new THREE.BoxGeometry(0.07, tableHeight - 0.08, 0.07);
+            const rollerGeo = new THREE.CylinderGeometry(0.075, 0.075, 0.045, 18);
+            const legInsetX = tableWidth / 2 - 0.16;
+            const legInsetZ = tableDepth / 2 - 0.16;
+            [[-legInsetX, -legInsetZ], [legInsetX, -legInsetZ], [-legInsetX, legInsetZ], [legInsetX, legInsetZ]].forEach(([lx, lz]) => {
                 const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(pos[0], 0.37, pos[1]);
-                leg.rotation.z = pos[0] < 0 ? -0.05 : 0.05;
-                leg.rotation.x = pos[1] < 0 ? -0.05 : 0.05;
-                leg.castShadow = true;
+                leg.position.set(lx, (tableHeight - 0.08) / 2 + 0.04, lz);
+                setMeshShadow(leg);
                 group.add(leg);
+
+                const roller = new THREE.Mesh(rollerGeo, rollerMat);
+                roller.rotation.z = Math.PI / 2;
+                roller.position.set(lx, 0.055, lz);
+                setMeshShadow(roller);
+                group.add(roller);
             });
+
             return group;
         }
 
-        function createCafeChair() {
+        function createFreeSeatChair(color) {
             const group = new THREE.Group();
-            const shellMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, side: THREE.DoubleSide });
-            const legMat = new THREE.MeshStandardMaterial({ color: 0xc19a6b, roughness: 0.8 }); 
-            
-            const seatGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24);
-            const seat = new THREE.Mesh(seatGeo, shellMat);
-            seat.position.y = 0.45;
-            seat.scale.set(1, 1, 0.9);
-            seat.castShadow = true;
+            const plasticMat = new THREE.MeshStandardMaterial({ color, roughness: 0.78, metalness: 0.02 });
+            const seatHeight = 0.44;
+
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.055, 0.42), plasticMat);
+            seat.position.y = seatHeight;
+            setMeshShadow(seat);
             group.add(seat);
-            
-            const backGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.35, 24, 1, true, 0, Math.PI);
-            const back = new THREE.Mesh(backGeo, shellMat);
-            back.position.set(0, 0.6, 0); 
-            back.scale.set(1, 1, 0.9);
-            back.castShadow = true;
+
+            const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.38, 0.055), plasticMat);
+            back.position.set(0, seatHeight + 0.24, 0.235);
+            back.rotation.x = -0.06;
+            setMeshShadow(back);
             group.add(back);
-            
-            const legGeo = new THREE.CylinderGeometry(0.015, 0.01, 0.45);
-            const offsets = [
-                [-0.15, -0.15], [0.15, -0.15], [-0.15, 0.12], [0.15, 0.12]
-            ];
-            offsets.forEach(pos => {
-                const leg = new THREE.Mesh(legGeo, legMat);
-                leg.position.set(pos[0], 0.225, pos[1]);
-                leg.rotation.z = pos[0] < 0 ? -0.15 : 0.15;
-                leg.rotation.x = pos[1] < 0 ? -0.15 : 0.15;
-                leg.castShadow = true;
+
+            const legGeo = new THREE.BoxGeometry(0.045, seatHeight, 0.045);
+            [[-0.18, -0.15], [0.18, -0.15], [-0.18, 0.15], [0.18, 0.15]].forEach(([lx, lz]) => {
+                const leg = new THREE.Mesh(legGeo, plasticMat);
+                leg.position.set(lx, seatHeight / 2, lz);
+                leg.rotation.x = lz < 0 ? 0.07 : -0.07;
+                leg.rotation.z = lx < 0 ? -0.05 : 0.05;
+                setMeshShadow(leg);
                 group.add(leg);
             });
+
             return group;
         }
 
-        function createCafeSet(x, z) {
+        function createFreeSeatSet(x, z, rotationY = 0) {
             const group = new THREE.Group();
-            group.add(createCafeTable());
-            
-            const c1 = createCafeChair();
-            c1.position.set(0, 0, 0.8);
-            c1.rotation.y = 0; 
-            group.add(c1);
-            
-            const c2 = createCafeChair();
-            c2.position.set(0, 0, -0.8);
-            c2.rotation.y = Math.PI; 
-            group.add(c2);
-            
-            const c3 = createCafeChair();
-            c3.position.set(0.8, 0, 0);
-            c3.rotation.y = Math.PI / 2;
-            group.add(c3);
-            
-            const c4 = createCafeChair();
-            c4.position.set(-0.8, 0, 0);
-            c4.rotation.y = -Math.PI / 2;
-            group.add(c4);
-            
+            group.add(createFreeSeatTable());
+
+            const blue = 0xaed3e8;
+            const yellow = 0xf4e5a0;
+            const chairLayout = [
+                { color: blue, position: [0.08, 0, 0.93], rotation: 0.03 },
+                { color: yellow, position: [-0.06, 0, -0.9], rotation: Math.PI - 0.04 },
+                { color: blue, position: [0.91, 0, -0.05], rotation: Math.PI / 2 + 0.05 },
+                { color: yellow, position: [-0.94, 0, 0.06], rotation: -Math.PI / 2 - 0.03 }
+            ];
+
+            chairLayout.forEach(({ color, position, rotation }) => {
+                const chair = createFreeSeatChair(color);
+                chair.position.set(position[0], position[1], position[2]);
+                chair.rotation.y = rotation;
+                group.add(chair);
+            });
+
             group.position.set(x, 0, z);
+            group.rotation.y = rotationY;
             scene.add(group);
         }
 
-        createCafeSet(-27.5, -2.2);
-        createCafeSet(-32.5, -2.2);
-        createCafeSet(-27.5, -4.8);
-        createCafeSet(-32.5, -4.8);
+        // オフィス自動販売機付近のフリー席: Z方向にそろえた2席×2列、列間は約2ポイント
+        createFreeSeatSet(-27.9, -3.2, 0);
+        createFreeSeatSet(-27.9, -5.8, 0);
+        createFreeSeatSet(-32.2, -3.2, 0);
+        createFreeSeatSet(-32.2, -5.8, 0);
 
 
         // ==========================================
@@ -1958,10 +1966,11 @@
             createDeskRow(x, 0, 4);
         }
 
-        // デスクを抜いた中央フリースペース（x = 5.4付近）にテーブルセットを3つ配置
-        createCafeSet(5.4, -2.0);
-        createCafeSet(5.4, 0.0);
-        createCafeSet(5.4, 2.0);
+        // デスクを抜いた中央フリースペース（x = 5.4付近）にフリー席セットを4つ、ダイヤモンド状に配置
+        createFreeSeatSet(5.4, -2.65, Math.PI / 4);
+        createFreeSeatSet(3.0, 0.0, -Math.PI / 4);
+        createFreeSeatSet(7.8, 0.0, Math.PI / 4);
+        createFreeSeatSet(5.4, 2.65, -Math.PI / 4);
 
         function createWallDeskStation(x, z, facingAngle) {
             const stationGroup = new THREE.Group();
