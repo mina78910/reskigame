@@ -1043,13 +1043,13 @@
         // --- ガラス出入口の奥にある玄関スペース ---
         // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥行き約8pt・左側に広い受付玄関を作る。
         const entranceDepth = 8.0;
-        const entranceExtraRight = 2.0;
-        const entranceExtraLeft = 4.0;
         const newHallDepth = entranceDepth;
         const entranceStartZ = roomDepth / 2;
         const entranceEndZ = entranceStartZ + entranceDepth;
-        const entranceLeftX = newDoorStart - entranceExtraLeft;
-        const entranceRightX = newDoorEnd + entranceExtraRight;
+        // 玄関の左右幅は絶対座標で x=-16〜x=-9 付近に補正する。
+        // 左端は「くぼみ」の開始位置と連動させつつ指定値に寄せ、右端はロッカー側の見切りに合わせる。
+        const entranceLeftX = leftNicheStart + 0.7;
+        const entranceRightX = newDoorEnd + 2.1;
         const entranceWidth = entranceRightX - entranceLeftX;
         const entranceCenterX = (entranceLeftX + entranceRightX) / 2;
         const entranceCenterZ = entranceStartZ + entranceDepth / 2;
