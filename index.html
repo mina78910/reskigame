@@ -224,6 +224,8 @@
         const roomHeight = 5 - ceilingLowerAmount;
         const wallFixtureHeightBoost = 0.6;
         const baseMeetingDoorHeight = 2.35;
+        const WALL_THICKNESS = 0.2;
+        const HALF_WALL_THICKNESS = WALL_THICKNESS / 2;
 
         function createCarpetTexture() {
             const size = 512;
@@ -452,6 +454,12 @@
             scene.add(wall);
         }
 
+        function createSharedXBoundaryWall(boundaryX, startZ, endZ, color = 0xd0d8e8) {
+            const depth = endZ - startZ;
+            if (depth <= 0.01) return;
+            createWall(WALL_THICKNESS, roomHeight, depth, boundaryX, roomHeight / 2, startZ + depth / 2, color);
+        }
+
         const backWallZ = -roomDepth / 2;
         const windowBottomHeight = 3.6 - ceilingLowerAmount;
         const windowTopHeight = 4.6 - ceilingLowerAmount;
@@ -622,10 +630,10 @@
         const wall1DoorSideWidth = newDoorStart - leftNicheEnd;
         createWall(wall1DoorSideWidth, roomHeight, 0.2, leftNicheEnd + wall1DoorSideWidth / 2, roomHeight / 2, roomDepth / 2);
 
-        createWall(0.2, roomHeight, leftNicheDepth, leftNicheStart - 0.1, roomHeight / 2, roomDepth / 2 + leftNicheDepth / 2);
-        createWall(0.2, roomHeight, leftNicheDepth, leftNicheEnd + 0.1, roomHeight / 2, roomDepth / 2 + leftNicheDepth / 2);
-        createWall(leftNicheWidth + 0.4, roomHeight, 0.2, leftNicheCenterX, roomHeight / 2, roomDepth / 2 + leftNicheDepth + 0.1, 0xe0e0e0);
-        createWall(leftNicheWidth + 0.4, 0.2, leftNicheDepth, leftNicheCenterX, roomHeight, roomDepth / 2 + leftNicheDepth / 2, 0xffffff);
+        createWall(WALL_THICKNESS, roomHeight, leftNicheDepth, leftNicheStart - HALF_WALL_THICKNESS, roomHeight / 2, roomDepth / 2 + leftNicheDepth / 2);
+        // leftNicheEnd は玄関左端と共有する境界なので、玄関側の共通壁で一元管理する。
+        createWall(leftNicheWidth + WALL_THICKNESS * 2, roomHeight, WALL_THICKNESS, leftNicheCenterX, roomHeight / 2, roomDepth / 2 + leftNicheDepth + HALF_WALL_THICKNESS, 0xe0e0e0);
+        createWall(leftNicheWidth + WALL_THICKNESS * 2, WALL_THICKNESS, leftNicheDepth, leftNicheCenterX, roomHeight, roomDepth / 2 + leftNicheDepth / 2, 0xffffff);
 
         const leftNicheTex = carpetTex.clone();
         leftNicheTex.needsUpdate = true;
@@ -1041,16 +1049,21 @@
         createWall(newDoorWidth, doorHeaderHeight, 0.2, newDoorX, newDoorHeight + doorHeaderHeight / 2, roomDepth / 2);
 
         // --- ガラス出入口の奥にある玄関スペース ---
-        // プレイヤーがガラス出入口を背にして +Z 方向を見る前提で、奥行き約8pt・左右幅はおおよそ X=-14〜X=-9 に収める。
-        // 左端は隣のくぼみ開始位置、右端はロッカー側の端に連動させ、周辺レイアウト変更時も内装が一緒に追従するようにする。
-        const entranceDepth = 8.0;
+        // 修正依頼が入りやすい端点は、数値直書きではなく境界定義に集約して連動させる。
         const lockerBankStartX = newDoorEnd + 0.3;
-        const entranceRightOffsetFromLocker = 1.7;
+        const ENTRANCE_LAYOUT = Object.freeze({
+            depth: 8.0,
+            rightOffsetFromLocker: 1.7,
+            walkInsetLeft: 0.85,
+            walkInsetRight: 0.45,
+            startZ: roomDepth / 2
+        });
+        const entranceDepth = ENTRANCE_LAYOUT.depth;
         const newHallDepth = entranceDepth;
-        const entranceStartZ = roomDepth / 2;
+        const entranceStartZ = ENTRANCE_LAYOUT.startZ;
         const entranceEndZ = entranceStartZ + entranceDepth;
         const entranceLeftX = leftNicheEnd;
-        const entranceRightX = lockerBankStartX + entranceRightOffsetFromLocker;
+        const entranceRightX = lockerBankStartX + ENTRANCE_LAYOUT.rightOffsetFromLocker;
         const entranceWidth = entranceRightX - entranceLeftX;
         const entranceCenterX = (entranceLeftX + entranceRightX) / 2;
         const entranceCenterZ = entranceStartZ + entranceDepth / 2;
@@ -1107,10 +1120,10 @@
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
-        createWall(0.2, roomHeight, entranceDepth, entranceLeftX - 0.1, roomHeight / 2, entranceCenterZ, 0xd8d5ca);
-        createWall(0.2, roomHeight, entranceDepth, entranceRightX + 0.1, roomHeight / 2, entranceCenterZ, 0xd8d5ca);
-        createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
-        createWall(entranceWidth + 0.4, 0.2, entranceDepth, entranceCenterX, roomHeight, entranceCenterZ, 0xf7f7f2);
+        createSharedXBoundaryWall(entranceLeftX, entranceStartZ, entranceEndZ, 0xd8d5ca);
+        createWall(WALL_THICKNESS, roomHeight, entranceDepth, entranceRightX + HALF_WALL_THICKNESS, roomHeight / 2, entranceCenterZ, 0xd8d5ca);
+        createWall(entranceWidth + WALL_THICKNESS * 2, roomHeight, WALL_THICKNESS, entranceCenterX, roomHeight / 2, entranceEndZ + HALF_WALL_THICKNESS, 0xd8d5ca);
+        createWall(entranceWidth + WALL_THICKNESS * 2, WALL_THICKNESS, entranceDepth, entranceCenterX, roomHeight, entranceCenterZ, 0xf7f7f2);
 
         const entranceWarmLight = new THREE.PointLight(0xffe5a8, 0.52, 8);
         entranceWarmLight.position.set(entranceLeftX + 1.2, 0.42, entranceStartZ + 3.5);
@@ -2604,8 +2617,8 @@
                 const leftNicheAllowedRight = leftNicheEnd - 0.4;
                 const newHallAllowedLeft = newDoorStart + 0.25;
                 const newHallAllowedRight = newDoorEnd - 0.25;
-                const entranceWalkLeft = entranceLeftX + 0.85;
-                const entranceWalkRight = entranceRightX - 0.45;
+                const entranceWalkLeft = entranceLeftX + ENTRANCE_LAYOUT.walkInsetLeft;
+                const entranceWalkRight = entranceRightX - ENTRANCE_LAYOUT.walkInsetRight;
                 const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
