@@ -1040,23 +1040,162 @@
         const doorHeaderHeight = roomHeight - newDoorHeight;
         createWall(newDoorWidth, doorHeaderHeight, 0.2, newDoorX, newDoorHeight + doorHeaderHeight / 2, roomDepth / 2);
 
-        // --- 出入口の奥の空間（廊下） ---
-        const newHallDepth = 2.5;
-        const greenPatchMat = new THREE.MeshStandardMaterial({ color: 0xebf2e3, roughness: 0.9 });
-        const newHallFloor = new THREE.Mesh(new THREE.PlaneGeometry(newDoorWidth, newHallDepth), greenPatchMat);
-        newHallFloor.rotation.x = -Math.PI / 2;
-        newHallFloor.position.set(newDoorX, 0.005, roomDepth / 2 + newHallDepth / 2);
-        newHallFloor.receiveShadow = true;
-        scene.add(newHallFloor);
+        // --- 出入口の奥の空間（玄関） ---
+        const newHallDepth = 4.2;
+        const newHallWidth = 5.2;
+        const newHallStart = newDoorX - newHallWidth / 2;
+        const newHallEnd = newDoorX + newHallWidth / 2;
+        const newHallCenterZ = roomDepth / 2 + newHallDepth / 2;
+        const newHallBackZ = roomDepth / 2 + newHallDepth;
 
-        createWall(0.2, roomHeight, newHallDepth, newDoorStart - 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2);
-        createWall(0.2, roomHeight, newHallDepth, newDoorEnd + 0.1, roomHeight / 2, roomDepth / 2 + newHallDepth / 2);
-        createWall(newDoorWidth, roomHeight, 0.2, newDoorX, roomHeight / 2, roomDepth / 2 + newHallDepth, 0xe0e0e0);
-        createWall(newDoorWidth, 0.2, newHallDepth, newDoorX, roomHeight, roomDepth / 2 + newHallDepth / 2, 0xffffff);
+        function createGenkanFloorTexture() {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#d9c1a2';
+            ctx.fillRect(0, 0, size, size);
+            for (let i = 0; i < 1400; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                const radius = Math.random() * 34 + 10;
+                const green = Math.random() > 0.48;
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                gradient.addColorStop(0, green ? 'rgba(102, 142, 91, 0.55)' : 'rgba(235, 196, 150, 0.48)');
+                gradient.addColorStop(1, green ? 'rgba(102, 142, 91, 0)' : 'rgba(235, 196, 150, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.strokeStyle = 'rgba(120, 95, 66, 0.13)';
+            ctx.lineWidth = 2;
+            for (let x = 0; x <= size; x += 64) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, size);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= size; y += 64) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(size, y);
+                ctx.stroke();
+            }
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.repeat.set(newHallWidth / 3, newHallDepth / 3);
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
 
-        const newHallLight = new THREE.PointLight(0xfff5e6, 0.5, 6);
-        newHallLight.position.set(newDoorX, roomHeight - 0.2, roomDepth / 2 + newHallDepth / 2);
-        scene.add(newHallLight);
+        function createCompanyLogoTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 192;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(70, 0, 430, 0);
+            gradient.addColorStop(0, '#7c3aed');
+            gradient.addColorStop(1, '#ff4fb3');
+            ctx.fillStyle = gradient;
+            ctx.font = '900 76px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('ReSki', canvas.width / 2, 82);
+            ctx.fillStyle = 'rgba(90, 42, 150, 0.85)';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillText('COMPANY RECEPTION', canvas.width / 2, 142);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const genkanFloor = new THREE.Mesh(
+            new THREE.PlaneGeometry(newHallWidth, newHallDepth),
+            new THREE.MeshStandardMaterial({ map: createGenkanFloorTexture(), roughness: 0.92 })
+        );
+        genkanFloor.rotation.x = -Math.PI / 2;
+        genkanFloor.position.set(newDoorX, 0.006, newHallCenterZ);
+        genkanFloor.receiveShadow = true;
+        scene.add(genkanFloor);
+
+        const genkanWallMatColor = 0xe6e2d7;
+        createWall(0.2, roomHeight, newHallDepth, newHallStart - 0.1, roomHeight / 2, newHallCenterZ, genkanWallMatColor);
+        createWall(0.2, roomHeight, newHallDepth, newHallEnd + 0.1, roomHeight / 2, newHallCenterZ, genkanWallMatColor);
+        createWall(newHallWidth + 0.2, roomHeight, 0.2, newDoorX, roomHeight / 2, newHallBackZ + 0.1, 0xdfd7c8);
+        createWall(newHallWidth + 0.2, 0.2, newHallDepth, newDoorX, roomHeight, newHallCenterZ, 0xffffff);
+
+        const genkanLight = new THREE.PointLight(0xfff1d8, 0.62, 8);
+        genkanLight.position.set(newDoorX - 0.3, roomHeight - 0.35, newHallCenterZ);
+        scene.add(genkanLight);
+        const genkanLight2 = new THREE.PointLight(0xf0e9ff, 0.28, 6);
+        genkanLight2.position.set(newHallEnd - 0.8, 2.4, newHallBackZ - 0.8);
+        scene.add(genkanLight2);
+
+        const benchGroup = new THREE.Group();
+        benchGroup.position.set(newHallEnd - 0.72, 0, newHallCenterZ + 0.35);
+        const blackBenchMat = new THREE.MeshStandardMaterial({ color: 0x070707, roughness: 0.62 });
+        const strawMat = new THREE.MeshStandardMaterial({ color: 0xd8bd77, roughness: 0.95 });
+        const benchSeat = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.24, 2.65), blackBenchMat);
+        benchSeat.position.set(0, 0.48, 0);
+        benchSeat.castShadow = true;
+        benchSeat.receiveShadow = true;
+        benchGroup.add(benchSeat);
+        [-0.95, 0, 0.95].forEach((z) => {
+            const cushion = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.11, 28), strawMat);
+            cushion.rotation.x = Math.PI / 2;
+            cushion.position.set(0, 0.67, z);
+            cushion.castShadow = true;
+            benchGroup.add(cushion);
+            const weave = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.008, 6, 36), new THREE.MeshStandardMaterial({ color: 0xb3914f, roughness: 0.9 }));
+            weave.rotation.x = Math.PI / 2;
+            weave.position.copy(cushion.position);
+            weave.position.y += 0.06;
+            benchGroup.add(weave);
+        });
+        for (const x of [-0.25, 0.25]) {
+            for (const z of [-1.05, 1.05]) {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.48, 0.08), blackBenchMat);
+                leg.position.set(x, 0.24, z);
+                leg.castShadow = true;
+                benchGroup.add(leg);
+            }
+        }
+        scene.add(benchGroup);
+
+        const rightWallX = newHallEnd - 0.012;
+        const logo = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.55, 0.58),
+            new THREE.MeshStandardMaterial({ map: createCompanyLogoTexture(), transparent: true, roughness: 0.55, side: THREE.DoubleSide })
+        );
+        logo.rotation.y = -Math.PI / 2;
+        logo.position.set(rightWallX, 1.62, newHallBackZ - 1.0);
+        scene.add(logo);
+
+        const boardMat = new THREE.MeshStandardMaterial({ color: 0x7b4d2f, roughness: 0.58 });
+        const board = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.48, 1.7), boardMat);
+        board.position.set(rightWallX - 0.035, 1.05, newHallBackZ - 1.0);
+        board.castShadow = true;
+        board.receiveShadow = true;
+        scene.add(board);
+
+        const phoneGroup = new THREE.Group();
+        phoneGroup.position.set(rightWallX - 0.14, 1.04, newHallBackZ - 1.0);
+        const phoneMat = new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.34, metalness: 0.08 });
+        const phoneBase = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.36), phoneMat);
+        phoneBase.castShadow = true;
+        phoneGroup.add(phoneBase);
+        const handset = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.06, 0.48), phoneMat);
+        handset.position.set(-0.03, 0.08, 0);
+        handset.rotation.x = 0.18;
+        handset.castShadow = true;
+        phoneGroup.add(handset);
+        const cord = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.006, 6, 28, Math.PI * 1.25), phoneMat);
+        cord.rotation.y = Math.PI / 2;
+        cord.position.set(-0.07, 0.04, 0.24);
+        phoneGroup.add(cord);
+        scene.add(phoneGroup);
 
         // --- ドアフレームとガラス ---
         const dFrameGroup = new THREE.Group();
@@ -2429,11 +2568,20 @@
                 const alcoveAllowedRight = alcoveEnd - 0.6;  
                 const leftNicheAllowedLeft = leftNicheStart + 0.4;
                 const leftNicheAllowedRight = leftNicheEnd - 0.4;
-                const newHallAllowedLeft = newDoorStart + 0.25;
-                const newHallAllowedRight = newDoorEnd - 0.25;
+                const newHallDoorAllowedLeft = newDoorStart + 0.25;
+                const newHallDoorAllowedRight = newDoorEnd - 0.25;
+                const newHallAllowedLeft = newHallStart + 0.45;
+                const newHallAllowedRight = newHallEnd - 0.45;
                 const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
-                const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
+                const inNewHallDoorway = camera.position.x > newHallDoorAllowedLeft && camera.position.x < newHallDoorAllowedRight;
+                const inExpandedGenkanDepth = camera.position.z > roomDepth / 2 + 0.15;
+                if (inExpandedGenkanDepth) {
+                    if (camera.position.x < newHallAllowedLeft) camera.position.x = newHallAllowedLeft;
+                    if (camera.position.x > newHallAllowedRight) camera.position.x = newHallAllowedRight;
+                }
+                const insideExpandedGenkan = inExpandedGenkanDepth;
+                const inNewHallMouth = inNewHallDoorway || insideExpandedGenkan;
 
                 if (inAlcoveMouth) {
                     if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
