@@ -399,50 +399,123 @@
 
         function createCityWindowTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 1024;
+            canvas.width = 2048;
             canvas.height = 1024;
             const ctx = canvas.getContext('2d');
 
+            // 4階の窓越しに見える都内大通り沿いの向かいビル。
+            // 道路面は見えない角度なので、低い位置までビル外壁で埋めて白飛びを抑える。
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            sky.addColorStop(0, '#f7fbff');
-            sky.addColorStop(1, '#dcecf7');
+            sky.addColorStop(0, '#d7e4ee');
+            sky.addColorStop(0.52, '#c4d5e1');
+            sky.addColorStop(1, '#b4c4cf');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const buildings = [
-                [40, 170, 210, 760], [255, 90, 170, 840], [455, 130, 210, 790],
-                [700, 60, 180, 860], [875, 190, 120, 740]
-            ];
-            buildings.forEach(([x, y, w, h], index) => {
-                ctx.fillStyle = index % 2 === 0 ? 'rgba(135, 170, 200, 0.72)' : 'rgba(115, 155, 190, 0.64)';
+            function drawBuilding({ x, y, w, h, body, side, frame, glass, floors, cols, inset = 26 }) {
+                const facade = ctx.createLinearGradient(x, y, x + w, y + h);
+                facade.addColorStop(0, side);
+                facade.addColorStop(0.42, body);
+                facade.addColorStop(1, '#708294');
+                ctx.fillStyle = facade;
                 ctx.fillRect(x, y, w, h);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
-                ctx.lineWidth = 5;
-                for (let gx = x + 24; gx < x + w; gx += 42) {
-                    ctx.beginPath();
-                    ctx.moveTo(gx, y);
-                    ctx.lineTo(gx, y + h);
-                    ctx.stroke();
+
+                ctx.fillStyle = 'rgba(32, 44, 56, 0.18)';
+                ctx.fillRect(x, y, Math.max(12, w * 0.045), h);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+                ctx.fillRect(x + w - Math.max(10, w * 0.035), y, Math.max(10, w * 0.035), h);
+
+                ctx.strokeStyle = 'rgba(44, 54, 64, 0.52)';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(x, y, w, h);
+
+                const topBandHeight = 34;
+                ctx.fillStyle = 'rgba(43, 53, 63, 0.42)';
+                ctx.fillRect(x, y, w, topBandHeight);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+                ctx.fillRect(x + 10, y + 7, w - 20, 4);
+
+                const gapX = 28;
+                const gapY = 30;
+                const bayW = (w - inset * 2 - gapX * (cols - 1)) / cols;
+                const bayH = (h - 92 - gapY * (floors - 1)) / floors;
+
+                for (let row = 0; row < floors; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        const wx = x + inset + col * (bayW + gapX);
+                        const wy = y + 58 + row * (bayH + gapY);
+                        const windowGrad = ctx.createLinearGradient(wx, wy, wx + bayW, wy + bayH);
+                        windowGrad.addColorStop(0, '#647f92');
+                        windowGrad.addColorStop(0.48, glass);
+                        windowGrad.addColorStop(1, '#314656');
+                        ctx.fillStyle = frame;
+                        ctx.fillRect(wx - 7, wy - 7, bayW + 14, bayH + 14);
+                        ctx.fillStyle = windowGrad;
+                        ctx.fillRect(wx, wy, bayW, bayH);
+
+                        ctx.strokeStyle = 'rgba(232, 241, 247, 0.35)';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(wx + bayW * 0.52, wy + 8);
+                        ctx.lineTo(wx + bayW * 0.52, wy + bayH - 8);
+                        ctx.stroke();
+
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.30)';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(wx + bayW * 0.12, wy + bayH * 0.22);
+                        ctx.lineTo(wx + bayW * 0.58, wy + bayH * 0.08);
+                        ctx.stroke();
+                    }
                 }
-                for (let gy = y + 34; gy < y + h; gy += 58) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, gy);
-                    ctx.lineTo(x + w, gy);
-                    ctx.stroke();
+
+                for (let row = 1; row < floors; row++) {
+                    const slabY = y + 40 + row * ((h - 70) / floors);
+                    ctx.fillStyle = 'rgba(28, 39, 49, 0.24)';
+                    ctx.fillRect(x, slabY, w, 7);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+                    ctx.fillRect(x + 8, slabY + 7, w - 16, 3);
                 }
+            }
+
+            drawBuilding({
+                x: -80, y: 165, w: 470, h: 900, body: '#8ea0aa', side: '#748793',
+                frame: '#d0d8dd', glass: '#8eaec0', floors: 4, cols: 2, inset: 42
+            });
+            drawBuilding({
+                x: 335, y: 70, w: 560, h: 990, body: '#8799a4', side: '#6d7e8c',
+                frame: '#cbd3d9', glass: '#7898ad', floors: 5, cols: 2, inset: 48
+            });
+            drawBuilding({
+                x: 860, y: 125, w: 430, h: 940, body: '#9aa097', side: '#7d867e',
+                frame: '#d8d2c8', glass: '#7f9aaa', floors: 4, cols: 2, inset: 38
+            });
+            drawBuilding({
+                x: 1240, y: 35, w: 570, h: 1035, body: '#7f929e', side: '#637884',
+                frame: '#c6d0d6', glass: '#88a8b8', floors: 5, cols: 2, inset: 50
+            });
+            drawBuilding({
+                x: 1760, y: 155, w: 370, h: 910, body: '#96908b', side: '#7a7774',
+                frame: '#d2cbc3', glass: '#7892a2', floors: 4, cols: 1, inset: 44
             });
 
-            ctx.strokeStyle = 'rgba(70, 105, 135, 0.26)';
-            ctx.lineWidth = 6;
-            for (let x = 170; x < canvas.width; x += 260) {
+            // 窓ガラスそのものの薄い反射。外景を隠さない程度に控えめに光らせる。
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.26)';
+            ctx.lineWidth = 14;
+            for (let x = -120; x < canvas.width; x += 420) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x + 310, canvas.height);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(76, 103, 122, 0.18)';
+            ctx.lineWidth = 10;
+            for (let x = 290; x < canvas.width; x += 520) {
                 ctx.beginPath();
                 ctx.moveTo(x, 0);
                 ctx.lineTo(x, canvas.height);
                 ctx.stroke();
             }
-
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const texture = new THREE.CanvasTexture(canvas);
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -544,15 +617,28 @@
         scene.add(cityView);
 
         const breakGlassMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, transparent: true, opacity: 0.22,
-            roughness: 0.04, metalness: 0.12, emissive: 0xffffff, emissiveIntensity: 0.12
+            color: 0xd8f0ff, transparent: true, opacity: 0.12,
+            roughness: 0.02, metalness: 0.18, emissive: 0x9fd3ff, emissiveIntensity: 0.04
         });
         const breakGlass = new THREE.Mesh(new THREE.PlaneGeometry(breakDepth, roomHeight), breakGlassMat);
         breakGlass.rotation.y = Math.PI / 2;
         breakGlass.position.set(-roomWidth / 2 - breakWidth + 0.01, roomHeight / 2, breakZ);
         scene.add(breakGlass);
 
-        const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
+        const breakGlassGlintMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.34, side: THREE.DoubleSide
+        });
+        [
+            { z: -5.95, y: roomHeight * 0.72, h: 1.35, ry: Math.PI / 2 - 0.18 },
+            { z: -2.85, y: roomHeight * 0.42, h: 1.05, ry: Math.PI / 2 - 0.18 }
+        ].forEach(({ z, y, h, ry }) => {
+            const glint = new THREE.Mesh(new THREE.PlaneGeometry(0.035, h), breakGlassGlintMat);
+            glint.rotation.y = ry;
+            glint.position.set(-roomWidth / 2 - breakWidth + 0.035, y, z);
+            scene.add(glint);
+        });
+
+        const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xe5ebef, roughness: 0.35 });
         for (let z = -roomDepth / 2; z <= 0.01; z += breakDepth / 3) {
             const frame = new THREE.Mesh(new THREE.BoxGeometry(0.12, roomHeight, 0.06), windowFrameMat);
             frame.position.set(-roomWidth / 2 - breakWidth + 0.02, roomHeight / 2, z);
