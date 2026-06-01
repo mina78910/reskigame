@@ -1240,7 +1240,19 @@
         createInsetGlassPanelX(entranceInsetGlass.verticalX, entranceInsetGlass.verticalStartZ, entranceInsetGlass.verticalEndZ);
         createInsetGlassPanelZ(entranceInsetGlass.frontStartX, entranceInsetGlass.frontEndX, entranceInsetGlass.frontZ);
         createXWallSegment(entranceRightX + 0.1, entranceStartZ, entranceEndZ, 0xd8d5ca);
-        createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
+        // 玄関奥は周回廊下へ接続するため、中央部分を開口として左右の袖壁だけを残す。
+        const entranceBackWallOpeningStart = entranceLeftX + 0.35;
+        const entranceBackWallOpeningEnd = entranceRightX - 0.35;
+        const entranceBackWallSegments = [
+            [entranceLeftX - 0.2, entranceBackWallOpeningStart],
+            [entranceBackWallOpeningEnd, entranceRightX + 0.2]
+        ];
+        entranceBackWallSegments.forEach(([startX, endX]) => {
+            const width = endX - startX;
+            if (width > 0.01) {
+                createWall(width, roomHeight, 0.2, startX + width / 2, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
+            }
+        });
 
         const entranceWarmLight = new THREE.PointLight(0xffe5a8, 0.52, 8);
         entranceWarmLight.position.set(entranceLeftX + 1.2, 0.42, entranceStartZ + 3.5);
@@ -1409,7 +1421,7 @@
 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveStart - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
         createWall(0.2, alcoveHeight, alcoveDepth, alcoveEnd + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth / 2); 
-        createWall(alcoveWidth + 0.4, alcoveHeight, 0.2, alcoveCenterX, alcoveHeight / 2, roomDepth / 2 + alcoveDepth + 0.1); 
+        // 中央の観音開きドアの奥は廊下へ抜けられるよう、突き当たり壁は作らず開口にする。
 
         const patchTex = carpetTex.clone();
         patchTex.needsUpdate = true;
@@ -1427,29 +1439,129 @@
 
         const doorGroup = new THREE.Group();
         const doorColorMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
-        const doorWidthDouble = 1.4;
+        const doorWidthDouble = 1.34;
+        const openDoorZ = roomDepth / 2 + alcoveDepth - 0.08;
+        const openDoorAngle = Math.PI * 0.34;
         
-        const doorL = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorL.position.set(alcoveCenterX - doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
-        doorL.castShadow = true;
-        doorGroup.add(doorL);
-        
-        const doorR = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorR.position.set(alcoveCenterX + doorWidthDouble / 2, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.05);
-        doorR.castShadow = true;
-        doorGroup.add(doorR);
+        function createOpenDoubleDoorLeaf(hingeX, swingSign) {
+            const leafGroup = new THREE.Group();
+            leafGroup.position.set(hingeX, 0, openDoorZ);
+            leafGroup.rotation.y = swingSign * openDoorAngle;
 
-        // --- ★ご指摘の取っ手を復元 ---
-        const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
-        const handleL = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleL.position.set(alcoveCenterX - 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
-        doorGroup.add(handleL);
-        
-        const handleR = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleR.position.set(alcoveCenterX + 0.1, alcoveHeight / 2, roomDepth / 2 + alcoveDepth - 0.02);
-        doorGroup.add(handleR);
+            const leaf = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
+            leaf.position.set(swingSign * doorWidthDouble / 2, alcoveHeight / 2, 0);
+            leaf.castShadow = true;
+            leaf.receiveShadow = true;
+            leafGroup.add(leaf);
 
+            const slitGlassMat = new THREE.MeshStandardMaterial({ color: 0xcfe8f5, transparent: true, opacity: 0.46, roughness: 0.12, metalness: 0.08 });
+            const slit = new THREE.Mesh(new THREE.BoxGeometry(0.14, alcoveHeight * 0.56, 0.018), slitGlassMat);
+            slit.position.set(swingSign * doorWidthDouble * 0.34, alcoveHeight * 0.53, -0.02);
+            leafGroup.add(slit);
+
+            const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
+            handle.position.set(swingSign * (doorWidthDouble - 0.18), alcoveHeight / 2, -0.045);
+            leafGroup.add(handle);
+
+            doorGroup.add(leafGroup);
+        }
+
+        createOpenDoubleDoorLeaf(alcoveStart + 0.03, 1);
+        createOpenDoubleDoorLeaf(alcoveEnd - 0.03, -1);
         scene.add(doorGroup);
+
+        // --- 中央ドアの外側に増築した周回廊下 ---
+        const corridorWidth = alcoveWidth;
+        const corridor1StartZ = roomDepth / 2 + alcoveDepth;
+        const corridor1EndZ = entranceEndZ;
+        const corridor1LeftX = alcoveStart;
+        const corridor1RightX = alcoveEnd;
+        const corridor1CenterZ = (corridor1StartZ + corridor1EndZ) / 2;
+        const corridor2StartX = entranceLeftX;
+        const corridor2EndX = corridor1RightX;
+        const corridor2StartZ = entranceEndZ;
+        const corridor2EndZ = entranceEndZ + corridorWidth;
+        const corridor2CenterX = (corridor2StartX + corridor2EndX) / 2;
+        const corridor2CenterZ = (corridor2StartZ + corridor2EndZ) / 2;
+        const BACK_CORRIDOR = Object.freeze({
+            corridor1LeftX,
+            corridor1RightX,
+            corridor1StartZ,
+            corridor1EndZ,
+            corridor2StartX,
+            corridor2EndX,
+            corridor2StartZ,
+            corridor2EndZ,
+            walkInset: 0.45
+        });
+
+        function createCorridorCarpet(width, depth) {
+            const texture = carpetTex.clone();
+            texture.needsUpdate = true;
+            texture.repeat.set(width / 4, depth / 4);
+            return new THREE.MeshStandardMaterial({ map: texture, roughness: 1.0 });
+        }
+
+        const corridor1Floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(corridorWidth, corridor1EndZ - corridor1StartZ),
+            createCorridorCarpet(corridorWidth, corridor1EndZ - corridor1StartZ)
+        );
+        corridor1Floor.rotation.x = -Math.PI / 2;
+        corridor1Floor.position.set(alcoveCenterX, 0.004, corridor1CenterZ);
+        corridor1Floor.receiveShadow = true;
+        scene.add(corridor1Floor);
+
+        const corridor2Floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(corridor2EndX - corridor2StartX, corridor2EndZ - corridor2StartZ),
+            createCorridorCarpet(corridor2EndX - corridor2StartX, corridor2EndZ - corridor2StartZ)
+        );
+        corridor2Floor.rotation.x = -Math.PI / 2;
+        corridor2Floor.position.set(corridor2CenterX, 0.005, corridor2CenterZ);
+        corridor2Floor.receiveShadow = true;
+        scene.add(corridor2Floor);
+
+
+        const corridorCeilingMat = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.84, emissive: 0x111111 });
+        const corridor2Ceiling = new THREE.Mesh(
+            new THREE.PlaneGeometry(corridor2EndX - corridor2StartX, corridor2EndZ - corridor2StartZ),
+            corridorCeilingMat
+        );
+        corridor2Ceiling.rotation.x = Math.PI / 2;
+        corridor2Ceiling.position.set(corridor2CenterX, roomHeight - 0.045, corridor2CenterZ);
+        corridor2Ceiling.receiveShadow = true;
+        scene.add(corridor2Ceiling);
+
+        const corridorWallColor = 0xd8d5ca;
+        const corridorSkirtMat = new THREE.MeshStandardMaterial({ color: 0x1f2528, roughness: 0.78 });
+        createXWallSegment(corridor1LeftX - 0.1, corridor1StartZ, corridor1EndZ, corridorWallColor);
+        createXWallSegment(corridor1RightX + 0.1, corridor1StartZ, corridor1EndZ, corridorWallColor);
+        createWall(corridor2EndX - corridor2StartX + 0.2, roomHeight, 0.2, corridor2CenterX, roomHeight / 2, corridor2EndZ + 0.1, corridorWallColor);
+        createWall(corridor2EndX - corridor2StartX - entranceWidth - corridorWidth, roomHeight, 0.2, (entranceRightX + corridor1LeftX) / 2, roomHeight / 2, corridor2StartZ - 0.1, corridorWallColor);
+        createXWallSegment(corridor2StartX - 0.1, corridor2StartZ, corridor2EndZ, corridorWallColor);
+        createXWallSegment(corridor2EndX + 0.1, corridor2StartZ, corridor2EndZ, corridorWallColor);
+
+        [corridor1LeftX - 0.02, corridor1RightX + 0.02].forEach((x) => {
+            const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, corridor1EndZ - corridor1StartZ), corridorSkirtMat);
+            skirt.position.set(x, 0.06, corridor1CenterZ);
+            scene.add(skirt);
+        });
+        [corridor2StartZ + 0.02, corridor2EndZ - 0.02].forEach((z) => {
+            const skirt = new THREE.Mesh(new THREE.BoxGeometry(corridor2EndX - corridor2StartX, 0.12, 0.04), corridorSkirtMat);
+            skirt.position.set(corridor2CenterX, 0.06, z);
+            scene.add(skirt);
+        });
+
+        [
+            [alcoveCenterX, corridor1StartZ + 1.2, 0.34],
+            [alcoveCenterX, corridor1StartZ + 3.9, 0.28],
+            [entranceRightX + 2.8, corridor2CenterZ, 0.3],
+            [corridor2EndX - 1.1, corridor2CenterZ, 0.26]
+        ].forEach(([x, z, intensity]) => {
+            const light = new THREE.PointLight(0xfff0d8, intensity, 5.5);
+            light.position.set(x, roomHeight - 0.42, z);
+            scene.add(light);
+        });
 
         // ==========================================
         // メイン天井 
@@ -2877,13 +2989,38 @@
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35 && camera.position.z < zNewHallBound + 0.1;
+                const inBackCorridor1 = camera.position.x > BACK_CORRIDOR.corridor1LeftX + BACK_CORRIDOR.walkInset
+                    && camera.position.x < BACK_CORRIDOR.corridor1RightX - BACK_CORRIDOR.walkInset
+                    && camera.position.z > BACK_CORRIDOR.corridor1StartZ - 0.45
+                    && camera.position.z < BACK_CORRIDOR.corridor1EndZ + BACK_CORRIDOR.walkInset;
+                const inBackCorridor2 = camera.position.x > BACK_CORRIDOR.corridor2StartX + BACK_CORRIDOR.walkInset
+                    && camera.position.x < BACK_CORRIDOR.corridor2EndX - BACK_CORRIDOR.walkInset
+                    && camera.position.z > BACK_CORRIDOR.corridor2StartZ - 0.35
+                    && camera.position.z < BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
+                const inEntranceBackOpening = camera.position.x > entranceBackWallOpeningStart + 0.15
+                    && camera.position.x < entranceBackWallOpeningEnd - 0.15
+                    && camera.position.z > entranceStartZ + 0.35
+                    && camera.position.z < BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
 
-                if (inEntranceArea) {
+                if (inBackCorridor1) {
+                    if (camera.position.x < BACK_CORRIDOR.corridor1LeftX + BACK_CORRIDOR.walkInset) camera.position.x = BACK_CORRIDOR.corridor1LeftX + BACK_CORRIDOR.walkInset;
+                    if (camera.position.x > BACK_CORRIDOR.corridor1RightX - BACK_CORRIDOR.walkInset) camera.position.x = BACK_CORRIDOR.corridor1RightX - BACK_CORRIDOR.walkInset;
+                    if (camera.position.z > BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset) camera.position.z = BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
+                } else if (inBackCorridor2) {
+                    if (camera.position.z < BACK_CORRIDOR.corridor2StartZ + BACK_CORRIDOR.walkInset) camera.position.z = BACK_CORRIDOR.corridor2StartZ + BACK_CORRIDOR.walkInset;
+                    if (camera.position.z > BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset) camera.position.z = BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
+                    if (camera.position.x < BACK_CORRIDOR.corridor2StartX + BACK_CORRIDOR.walkInset) camera.position.x = BACK_CORRIDOR.corridor2StartX + BACK_CORRIDOR.walkInset;
+                    if (camera.position.x > BACK_CORRIDOR.corridor2EndX - BACK_CORRIDOR.walkInset) camera.position.x = BACK_CORRIDOR.corridor2EndX - BACK_CORRIDOR.walkInset;
+                } else if (inEntranceBackOpening) {
+                    if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
+                    if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
+                    if (camera.position.z > BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset) camera.position.z = BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
+                } else if (inEntranceArea) {
                     if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
                     if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
                     if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
                 } else if (inAlcoveMouth) {
-                    if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
+                    if (camera.position.z > BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset) camera.position.z = BACK_CORRIDOR.corridor2EndZ - BACK_CORRIDOR.walkInset;
                 } else if (inLeftNicheMouth) {
                     if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
                 } else if (inNewHallMouth) {
