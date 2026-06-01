@@ -620,6 +620,7 @@
         });
         const leftNicheBackZ = frontExtensionStartZ + leftNicheDepth;
         const lockerBankStartX = newDoorEnd + ENTRANCE_LAYOUT.lockerGapFromDoor;
+        const lockerBankEndX = 15;
         const sharedNicheEntranceWallX = leftNicheEnd + 0.1;
 
         const meetingDoorWidth = newDoorWidth;
@@ -1201,6 +1202,31 @@
         const crossCorridorDepth = corridorEndZ - corridorTurnStartZ;
         const crossCorridorCenterZ = corridorTurnStartZ + crossCorridorDepth / 2;
 
+        // エレベーターホールは、メインルーム内ロッカー列の両端にX幅を連動させる。
+        // 背面（-Z側）はメインルーム前面壁と同じZ座標に揃え、エレベーター扉が+Z方向を向く配置にする。
+        const elevatorHallStartX = lockerBankStartX;
+        const elevatorHallEndX = lockerBankEndX;
+        const elevatorHallWidth = elevatorHallEndX - elevatorHallStartX;
+        const elevatorHallCenterX = (elevatorHallStartX + elevatorHallEndX) / 2;
+        const elevatorHallBackZ = roomDepth / 2;
+        const elevatorHallFrontZ = entranceEndZ;
+        const elevatorHallDepth = elevatorHallFrontZ - elevatorHallBackZ;
+        const elevatorHallCenterZ = (elevatorHallBackZ + elevatorHallFrontZ) / 2;
+        const elevatorHallWallColor = 0xd8d5ca;
+
+        function createHorizontalWallWithOpening(startX, endX, z, openingStartX, openingEndX, color = corridorWallColor, height = corridorHeight) {
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const gapStart = Math.max(minX, openingStartX);
+            const gapEnd = Math.min(maxX, openingEndX);
+            [[minX, gapStart], [gapEnd, maxX]].forEach(([segmentStart, segmentEnd]) => {
+                const width = segmentEnd - segmentStart;
+                if (width > 0.01) {
+                    createWall(width, height, 0.2, segmentStart + width / 2, height / 2, z, color);
+                }
+            });
+        }
+
         function createSharedCarpetPatch(width, depth, centerX, centerZ, yOffset = 0.007) {
             const patchTex = carpetTex.clone();
             patchTex.needsUpdate = true;
@@ -1214,6 +1240,75 @@
             patch.receiveShadow = true;
             scene.add(patch);
             return patch;
+        }
+
+        function createElevatorHall() {
+            createSharedCarpetPatch(elevatorHallWidth, elevatorHallDepth, elevatorHallCenterX, elevatorHallCenterZ, 0.009);
+
+            const elevatorCeiling = new THREE.Mesh(
+                new THREE.PlaneGeometry(elevatorHallWidth, elevatorHallDepth),
+                new THREE.MeshStandardMaterial({ color: 0xf2f1ec, roughness: 0.9, emissive: 0x080807 })
+            );
+            elevatorCeiling.rotation.x = Math.PI / 2;
+            elevatorCeiling.position.set(elevatorHallCenterX, corridorHeight - 0.03, elevatorHallCenterZ);
+            elevatorCeiling.receiveShadow = true;
+            scene.add(elevatorCeiling);
+
+            createWall(0.2, corridorHeight, elevatorHallDepth, elevatorHallStartX - 0.1, corridorHeight / 2, elevatorHallCenterZ, elevatorHallWallColor);
+            createWall(0.2, corridorHeight, elevatorHallDepth, elevatorHallEndX + 0.1, corridorHeight / 2, elevatorHallCenterZ, elevatorHallWallColor);
+
+            const elevatorMat = new THREE.MeshStandardMaterial({ color: 0x30343a, metalness: 0.38, roughness: 0.42 });
+            const elevatorDoorMat = new THREE.MeshStandardMaterial({ color: 0x25282d, metalness: 0.48, roughness: 0.36 });
+            const seamMat = new THREE.MeshStandardMaterial({ color: 0x14161a, roughness: 0.5 });
+            const callButtonMat = new THREE.MeshStandardMaterial({ color: 0xe6e0c7, emissive: 0xffd166, emissiveIntensity: 0.5, roughness: 0.2 });
+            const elevatorWidth = Math.min(2.65, elevatorHallWidth / 4.6);
+            const elevatorHeight = 3.0;
+            const elevatorDepth = 0.52;
+            const elevatorBackCenterZ = elevatorHallBackZ + elevatorDepth / 2;
+            const elevatorDoorZ = elevatorHallBackZ + elevatorDepth + 0.015;
+            const elevatorXs = [
+                elevatorHallCenterX - elevatorHallWidth * 0.18,
+                elevatorHallCenterX + elevatorHallWidth * 0.18
+            ];
+
+            elevatorXs.forEach((x, index) => {
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(elevatorWidth, elevatorHeight, elevatorDepth), elevatorMat);
+                frame.position.set(x, elevatorHeight / 2, elevatorBackCenterZ);
+                frame.castShadow = true;
+                frame.receiveShadow = true;
+                scene.add(frame);
+
+                const doorPanelWidth = elevatorWidth * 0.43;
+                [-1, 1].forEach((side) => {
+                    const door = new THREE.Mesh(new THREE.BoxGeometry(doorPanelWidth, elevatorHeight * 0.82, 0.045), elevatorDoorMat);
+                    door.position.set(x + side * doorPanelWidth / 2, elevatorHeight * 0.43, elevatorDoorZ);
+                    door.castShadow = true;
+                    door.receiveShadow = true;
+                    scene.add(door);
+                });
+
+                const centerSeam = new THREE.Mesh(new THREE.BoxGeometry(0.035, elevatorHeight * 0.82, 0.055), seamMat);
+                centerSeam.position.set(x, elevatorHeight * 0.43, elevatorDoorZ + 0.01);
+                scene.add(centerSeam);
+
+                const indicator = new THREE.Mesh(new THREE.BoxGeometry(elevatorWidth * 0.5, 0.16, 0.055), seamMat);
+                indicator.position.set(x, elevatorHeight * 0.9, elevatorDoorZ + 0.012);
+                scene.add(indicator);
+
+                const callButton = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.025, 24), callButtonMat);
+                callButton.rotation.x = Math.PI / 2;
+                callButton.position.set(x + (index === 0 ? elevatorWidth * 0.62 : -elevatorWidth * 0.62), 1.22, elevatorDoorZ + 0.04);
+                scene.add(callButton);
+            });
+
+            [
+                [elevatorHallCenterX - elevatorHallWidth * 0.28, elevatorHallCenterZ, 0.22],
+                [elevatorHallCenterX + elevatorHallWidth * 0.28, elevatorHallCenterZ, 0.22]
+            ].forEach(([x, z, intensity]) => {
+                const light = new THREE.PointLight(0xfff5e6, intensity, 6.0);
+                light.position.set(x, corridorHeight - 0.45, z);
+                scene.add(light);
+            });
         }
 
         function createEntranceFloorTexture() {
@@ -1268,6 +1363,8 @@
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
+        createElevatorHall();
+
         // くぼみ右端と玄関左端の共有壁は、くぼみ側で作った壁を使い、奥側の不足分だけ延長する。
         // 同じ境界に2枚の壁を重ねないことで、厚みの二重化と今後の修正漏れを防ぐ。
         createXWallSegment(sharedNicheEntranceWallX, leftNicheBackZ, entranceEndZ, 0xd8d5ca);
@@ -1275,7 +1372,7 @@
         createInsetGlassPanelZ(entranceInsetGlass.frontStartX, entranceInsetGlass.frontEndX, entranceInsetGlass.frontZ);
         // 玄関右奥は横廊下との接続口にするため、Z=13 以降の壁を切る。
         createXWallSegment(entranceRightX + 0.1, entranceStartZ, corridorTurnStartZ, 0xd8d5ca);
-        createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
+        createHorizontalWallWithOpening(entranceLeftX - 0.2, entranceRightX + 0.2, entranceEndZ + 0.1, elevatorHallStartX, elevatorHallEndX, 0xd8d5ca, roomHeight);
 
         const entranceWarmLight = new THREE.PointLight(0xffe5a8, 0.52, 8);
         entranceWarmLight.position.set(entranceLeftX + 1.2, 0.42, entranceStartZ + 3.5);
@@ -1464,14 +1561,14 @@
         createSharedCarpetPatch(corridorWidth, corridorEndZ - corridorDoorZ, corridorCenterX, (corridorDoorZ + corridorEndZ) / 2);
         createWall(0.2, corridorHeight, corridorTurnStartZ - corridorDoorZ, corridorLeftX - 0.1, corridorHeight / 2, (corridorDoorZ + corridorTurnStartZ) / 2, corridorWallColor);
         createWall(0.2, corridorHeight, corridorTurnStartZ - corridorDoorZ, corridorRightX + 0.1, corridorHeight / 2, (corridorDoorZ + corridorTurnStartZ) / 2, corridorWallColor);
-        createWall(corridorWidth + 0.4, corridorHeight, 0.2, corridorCenterX, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
+        createHorizontalWallWithOpening(corridorLeftX - 0.2, corridorRightX + 0.2, corridorEndZ + 0.1, elevatorHallStartX, elevatorHallEndX, corridorWallColor, corridorHeight);
 
         // 廊下2：突き当たり手前で横に折れ、既存玄関へ接続する周回ルート。
         createSharedCarpetPatch(crossCorridorWidth, crossCorridorDepth, crossCorridorCenterX, crossCorridorCenterZ, 0.008);
-        createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
-        createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
-        createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
-        createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
+        createHorizontalWallWithOpening(crossCorridorMinX, corridorLeftX, corridorTurnStartZ - 0.1, elevatorHallStartX, elevatorHallEndX, corridorWallColor, corridorHeight);
+        createHorizontalWallWithOpening(corridorRightX, crossCorridorMaxX, corridorTurnStartZ - 0.1, elevatorHallStartX, elevatorHallEndX, corridorWallColor, corridorHeight);
+        createHorizontalWallWithOpening(crossCorridorMinX, corridorLeftX, corridorEndZ + 0.1, elevatorHallStartX, elevatorHallEndX, corridorWallColor, corridorHeight);
+        createHorizontalWallWithOpening(corridorRightX, crossCorridorMaxX, corridorEndZ + 0.1, elevatorHallStartX, elevatorHallEndX, corridorWallColor, corridorHeight);
         createWall(0.2, corridorHeight, crossCorridorDepth, crossCorridorMaxX + 0.1, corridorHeight / 2, crossCorridorCenterZ, corridorWallColor);
 
         const corridorCeilingMat = new THREE.MeshStandardMaterial({ color: 0xf2f1ec, roughness: 0.9, emissive: 0x080807 });
@@ -2150,7 +2247,7 @@
             }
             scene.add(lockerGroup);
         }
-        createLockerBank(lockerBankStartX, 15, roomDepth / 2 - 0.1);
+        createLockerBank(lockerBankStartX, lockerBankEndX, roomDepth / 2 - 0.1);
 
         // ==========================================
         // 8. ブレイクエリア（右奥の壁際）の配置
@@ -2959,9 +3056,17 @@
                 const crossWalkRight = crossCorridorMaxX - 0.45;
                 const crossWalkStartZ = corridorTurnStartZ + 0.25;
                 const crossWalkEndZ = corridorEndZ - 0.45;
+                const elevatorHallWalkLeft = elevatorHallStartX + 0.45;
+                const elevatorHallWalkRight = elevatorHallEndX - 0.45;
+                const elevatorHallWalkStartZ = elevatorHallBackZ + 0.75;
+                const elevatorHallWalkEndZ = elevatorHallFrontZ - 0.45;
                 const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
                 const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
                 const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
+                const inElevatorHall = camera.position.z > elevatorHallWalkStartZ - 0.15
+                    && camera.position.z < elevatorHallWalkEndZ + 0.15
+                    && camera.position.x > elevatorHallWalkLeft - 0.35
+                    && camera.position.x < elevatorHallWalkRight + 0.35;
                 const inCrossCorridor = camera.position.z > crossWalkStartZ - 0.15
                     && camera.position.z < crossWalkEndZ + 0.15
                     && camera.position.x > crossWalkLeft - 0.35
@@ -2975,7 +3080,12 @@
                     && camera.position.x > entranceWalkLeft - 0.4
                     && camera.position.x < entranceWalkRight + 0.55;
 
-                if (inCrossCorridor) {
+                if (inElevatorHall) {
+                    if (camera.position.x < elevatorHallWalkLeft) camera.position.x = elevatorHallWalkLeft;
+                    if (camera.position.x > elevatorHallWalkRight) camera.position.x = elevatorHallWalkRight;
+                    if (camera.position.z < elevatorHallWalkStartZ) camera.position.z = elevatorHallWalkStartZ;
+                    if (camera.position.z > elevatorHallWalkEndZ) camera.position.z = elevatorHallWalkEndZ;
+                } else if (inCrossCorridor) {
                     if (camera.position.x < crossWalkLeft) camera.position.x = crossWalkLeft;
                     if (camera.position.x > crossWalkRight) camera.position.x = crossWalkRight;
                     if (camera.position.z < crossWalkStartZ) camera.position.z = crossWalkStartZ;
