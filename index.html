@@ -3411,6 +3411,40 @@
                 const doorwayOverlap = 0.55;
                 // アルコーブ判定は X 範囲だけだと奥の廊下（同じ X=約4.8）でも成立し、
                 // Z=15 付近からアルコーブ上限まで押し戻されてワープに見えるため、手前側だけに限定する。
+                const isInsideWalkableExtension = (x, z) => {
+                    const inAlcoveMouthFor = x >= alcoveAllowedLeft - routeEpsilon
+                        && x <= alcoveAllowedRight + routeEpsilon
+                        && z <= zAlcoveBound + 0.25;
+                    const inLeftNicheMouthFor = x >= leftNicheAllowedLeft - routeEpsilon
+                        && x <= leftNicheAllowedRight + routeEpsilon
+                        && z <= zLeftNicheBound + 0.25;
+                    const inNewHallMouthFor = x >= newHallAllowedLeft - routeEpsilon
+                        && x <= newHallAllowedRight + routeEpsilon
+                        && z <= zNewHallBound + 0.25;
+                    const inCrossCorridorFor = z >= crossWalkStartZ - 0.15 - routeEpsilon
+                        && z <= crossWalkEndZ + 0.15 + routeEpsilon
+                        && x >= crossWalkLeft - 0.35 - routeEpsilon
+                        && x <= crossWalkRight + 0.35 + routeEpsilon;
+                    const inCorridor1For = x >= corridorWalkLeft - 0.2 - routeEpsilon
+                        && x <= corridorWalkRight + 0.2 + routeEpsilon
+                        && z >= corridorWalkStartZ - routeEpsilon;
+                    const inEntranceAreaFor = z >= entranceStartZ + 0.35 - routeEpsilon
+                        && z <= crossWalkEndZ + 0.1 + routeEpsilon
+                        && x >= entranceWalkLeft - 0.4 - routeEpsilon
+                        && x <= entranceWalkRight + 0.55 + routeEpsilon;
+                    const inElevatorHallFor = z >= elevatorWalkBackZ - 0.2 - routeEpsilon
+                        && z <= elevatorDoorwayFrontZ + routeEpsilon
+                        && x >= elevatorWalkLeft - doorwayOverlap
+                        && x <= elevatorWalkRight + 0.25 + routeEpsilon;
+
+                    return inAlcoveMouthFor
+                        || inLeftNicheMouthFor
+                        || inNewHallMouthFor
+                        || inCrossCorridorFor
+                        || inCorridor1For
+                        || inEntranceAreaFor
+                        || inElevatorHallFor;
+                };
                 const inAlcoveMouth = camera.position.x >= alcoveAllowedLeft - routeEpsilon
                     && camera.position.x <= alcoveAllowedRight + routeEpsilon
                     && camera.position.z <= zAlcoveBound + 0.25;
@@ -3463,10 +3497,21 @@
                     // 以前は zLockerBound へ直接戻していたため、メインルームへ瞬間移動したように見えていた。
                     // すでにメインルーム外にいる場合は直前の有効位置へ戻し、壁に押し当て続けても場所が飛ばないようにする。
                     if (previousPosition.z > zLockerBound) {
-                        camera.position.x = previousPosition.x;
-                        camera.position.z = previousPosition.z;
-                        velocity.x = 0;
-                        velocity.z = 0;
+                        const canSlideBackToMainRoom = camera.position.z < previousPosition.z
+                            && isInsideWalkableExtension(previousPosition.x, camera.position.z);
+
+                        if (canSlideBackToMainRoom) {
+                            // ガラス出入口の左端付近（例: X=-12.36 / Z=5.60）で斜めに戻ると、
+                            // X だけが開口判定から数cm外れて Z- 方向の退避まで巻き戻されていた。
+                            // 直前の有効な X に沿って滑らせ、室内へ戻る Z- 移動は残す。
+                            camera.position.x = previousPosition.x;
+                            velocity.x = 0;
+                        } else {
+                            camera.position.x = previousPosition.x;
+                            camera.position.z = previousPosition.z;
+                            velocity.x = 0;
+                            velocity.z = 0;
+                        }
                     } else {
                         camera.position.z = zLockerBound;
                     }
