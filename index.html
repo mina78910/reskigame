@@ -5,12 +5,20 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>リスキリングセンター3</title>
   <style>
     /* ==========================================
            UI & Base Styles
            ========================================== */
+    html, body {
+      width: 100%;
+      height: 100%;
+      overscroll-behavior: none;
+      touch-action: none;
+      -webkit-text-size-adjust: 100%;
+    }
+
     body {
       margin: 0;
       overflow: hidden;
@@ -19,6 +27,13 @@
       touch-action: none;
       user-select: none;
       -webkit-user-select: none;
+    }
+
+    canvas, #ui-layer, #joystick-zone, #mobile-exit {
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     #ui-layer {
@@ -2823,14 +2838,16 @@
             camera.quaternion.setFromEuler(euler);
         }
 
-        uiLayer.addEventListener('click', () => {
+        function startGame() {
+            if (isPlaying) return;
+
             if (isTouchDevice) {
                 isPlaying = true;
                 uiLayer.style.opacity = '0';
                 setTimeout(() => uiLayer.style.display = 'none', 300);
                 document.getElementById('joystick-zone').style.display = 'block';
                 document.getElementById('mobile-exit').style.display = 'flex';
-                
+
                 if (!window.joystickManager) {
                     window.joystickManager = nipplejs.create({
                         zone: document.getElementById('joystick-zone'),
@@ -2859,7 +2876,13 @@
                     lockRequest.catch(() => {});
                 }
             }
-        });
+        }
+
+        uiLayer.addEventListener('click', startGame);
+        uiLayer.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            startGame();
+        }, { passive: false });
 
         document.addEventListener('pointerlockchange', () => {
             isPlaying = document.pointerLockElement === document.body;
@@ -2874,13 +2897,24 @@
             }
         });
 
-        document.getElementById('mobile-exit').addEventListener('click', () => {
+        const mobileExit = document.getElementById('mobile-exit');
+
+        function exitMobileGame() {
             isPlaying = false;
             uiLayer.style.display = 'flex';
             setTimeout(() => uiLayer.style.opacity = '1', 10);
             document.getElementById('joystick-zone').style.display = 'none';
-            document.getElementById('mobile-exit').style.display = 'none';
-        });
+            mobileExit.style.display = 'none';
+            lookTouchId = null;
+            joyMoveX = 0;
+            joyMoveZ = 0;
+        }
+
+        mobileExit.addEventListener('click', exitMobileGame);
+        mobileExit.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            exitMobileGame();
+        }, { passive: false });
 
         document.addEventListener('pointerdown', (event) => {
             if (!isPlaying || event.pointerType !== 'mouse' || document.pointerLockElement === document.body) return;
@@ -2912,7 +2946,25 @@
             isMouseLooking = false;
         });
 
+        function preventBrowserTouchZoom(e) {
+            if (!isTouchDevice) return;
+            // iOS Safari can ignore the viewport's user-scalable setting and still
+            // enter page zoom/smart-zoom if game gestures are not cancelled.
+            // The app implements all touch interactions itself, so while playing we
+            // always cancel the browser's default touch handling.
+            if (isPlaying) e.preventDefault();
+        }
+
+        ['gesturestart', 'gesturechange', 'gestureend'].forEach((eventName) => {
+            document.addEventListener(eventName, (e) => e.preventDefault(), { passive: false });
+        });
+
+        document.addEventListener('dblclick', (e) => {
+            if (isTouchDevice) e.preventDefault();
+        }, { passive: false });
+
         document.addEventListener('touchstart', (e) => {
+            preventBrowserTouchZoom(e);
             if (!isPlaying || !isTouchDevice) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
@@ -2926,6 +2978,7 @@
         }, { passive: false });
 
         document.addEventListener('touchmove', (e) => {
+            preventBrowserTouchZoom(e);
             if (!isPlaying || !isTouchDevice) return;
             for (let i = 0; i < e.changedTouches.length; i++) {
                 let t = e.changedTouches[i];
@@ -2940,13 +2993,17 @@
             }
         }, { passive: false });
 
-        document.addEventListener('touchend', (e) => {
+        function clearEndedLookTouch(e) {
+            preventBrowserTouchZoom(e);
             for (let i = 0; i < e.changedTouches.length; i++) {
                 if (e.changedTouches[i].identifier === lookTouchId) {
                     lookTouchId = null;
                 }
             }
-        });
+        }
+
+        document.addEventListener('touchend', clearEndedLookTouch, { passive: false });
+        document.addEventListener('touchcancel', clearEndedLookTouch, { passive: false });
 
         const keys = { w: false, a: false, s: false, d: false };
         document.addEventListener('keydown', (e) => {
