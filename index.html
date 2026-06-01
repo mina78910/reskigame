@@ -3463,10 +3463,19 @@
                     // 以前は zLockerBound へ直接戻していたため、メインルームへ瞬間移動したように見えていた。
                     // すでにメインルーム外にいる場合は直前の有効位置へ戻し、壁に押し当て続けても場所が飛ばないようにする。
                     if (previousPosition.z > zLockerBound) {
+                        // ドア枠の角を斜めに抜けるとき、X が先に通路判定から外れても
+                        // Z が室内側へ戻る動きなら残す。両軸を直前位置へ戻すと、
+                        // X=-12.36 / Z=5.60 付近で -X + -Z 入力時に壁へ吸い付いたように止まる。
+                        const returningToMainRoom = camera.position.z < previousPosition.z;
                         camera.position.x = previousPosition.x;
-                        camera.position.z = previousPosition.z;
-                        velocity.x = 0;
-                        velocity.z = 0;
+                        if (returningToMainRoom) {
+                            camera.position.z = Math.max(camera.position.z, zLockerBound);
+                            velocity.x = 0;
+                        } else {
+                            camera.position.z = previousPosition.z;
+                            velocity.x = 0;
+                            velocity.z = 0;
+                        }
                     } else {
                         camera.position.z = zLockerBound;
                     }
