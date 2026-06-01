@@ -2957,21 +2957,34 @@
                 const crossWalkRight = crossCorridorMaxX - 0.45;
                 const crossWalkStartZ = corridorTurnStartZ + 0.25;
                 const crossWalkEndZ = corridorEndZ - 0.45;
-                const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
-                const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
-                const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
-                const inCrossCorridor = camera.position.z > crossWalkStartZ - 0.15
-                    && camera.position.z < crossWalkEndZ + 0.15
-                    && camera.position.x > crossWalkLeft - 0.35
-                    && camera.position.x < crossWalkRight + 0.35;
-                const inCorridor1 = camera.position.x > corridorWalkLeft - 0.2
-                    && camera.position.x < corridorWalkRight + 0.2
-                    && camera.position.z > corridorWalkStartZ
-                    && camera.position.z < corridorWalkEndZ + 0.2;
+                // 廊下や玄関で壁にぶつかった際、1フレームだけ歩行可能範囲から少しはみ出すと
+                // どの拡張エリア判定にも入らず、最後のメインルーム用 zLockerBound へ大きく戻されていた。
+                // 判定には余白を持たせ、壁際の押し戻しは現在いるエリア内のクランプで処理する。
+                const collisionGrace = 1.2;
+                const inAlcoveMouth = camera.position.z > roomDepth / 2 - 0.35
+                    && camera.position.z < zAlcoveBound + collisionGrace
+                    && camera.position.x > alcoveAllowedLeft - collisionGrace
+                    && camera.position.x < alcoveAllowedRight + collisionGrace;
+                const inLeftNicheMouth = camera.position.z > roomDepth / 2 - 0.35
+                    && camera.position.z < zLeftNicheBound + collisionGrace
+                    && camera.position.x > leftNicheAllowedLeft - collisionGrace
+                    && camera.position.x < leftNicheAllowedRight + collisionGrace;
+                const inNewHallMouth = camera.position.z > roomDepth / 2 - 0.35
+                    && camera.position.z < zNewHallBound + collisionGrace
+                    && camera.position.x > newHallAllowedLeft - collisionGrace
+                    && camera.position.x < newHallAllowedRight + collisionGrace;
+                const inCrossCorridor = camera.position.z > crossWalkStartZ - collisionGrace
+                    && camera.position.z < crossWalkEndZ + collisionGrace
+                    && camera.position.x > crossWalkLeft - collisionGrace
+                    && camera.position.x < crossWalkRight + collisionGrace;
+                const inCorridor1 = camera.position.x > corridorWalkLeft - collisionGrace
+                    && camera.position.x < corridorWalkRight + collisionGrace
+                    && camera.position.z > corridorWalkStartZ - 0.35
+                    && camera.position.z < corridorWalkEndZ + collisionGrace;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35
-                    && camera.position.z < crossWalkEndZ + 0.1
-                    && camera.position.x > entranceWalkLeft - 0.4
-                    && camera.position.x < entranceWalkRight + 0.55;
+                    && camera.position.z < crossWalkEndZ + collisionGrace
+                    && camera.position.x > entranceWalkLeft - collisionGrace
+                    && camera.position.x < entranceWalkRight + collisionGrace;
 
                 if (inCrossCorridor) {
                     if (camera.position.x < crossWalkLeft) camera.position.x = crossWalkLeft;
