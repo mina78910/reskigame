@@ -388,10 +388,10 @@
             canvas.height = 1024;
             const ctx = canvas.getContext('2d');
 
-            // 4階の大通り沿いオフィスから見える、都内らしい向かいのビルと街路樹の眺め。
+            // 目の前が大通りで4階から道路面はほぼ見下ろせないため、向かいのビル面を主役にする。
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
             sky.addColorStop(0, '#b9d4ea');
-            sky.addColorStop(0.58, '#d7e7f2');
+            sky.addColorStop(0.44, '#d8e9f4');
             sky.addColorStop(1, '#eef3f5');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -399,91 +399,62 @@
             function drawBuilding(x, y, w, h, wallColor, windowColor, accentColor) {
                 ctx.fillStyle = wallColor;
                 ctx.fillRect(x, y, w, h);
-                ctx.fillStyle = 'rgba(45, 58, 72, 0.24)';
-                ctx.fillRect(x + w - 10, y + 10, 10, h - 10);
+                ctx.fillStyle = 'rgba(38, 50, 64, 0.22)';
+                ctx.fillRect(x + w - 12, y + 10, 12, h - 10);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+                ctx.fillRect(x + 12, y + 16, Math.max(0, w - 32), 8);
                 ctx.fillStyle = accentColor;
-                ctx.fillRect(x, y, w, 16);
-                ctx.fillRect(x, y, 12, h);
+                ctx.fillRect(x, y, w, 18);
+                ctx.fillRect(x, y, 14, h);
 
-                const colGap = 34;
-                const rowGap = 54;
-                const winW = Math.max(16, Math.min(30, w / 7));
-                const winH = 24;
-                for (let wx = x + 26; wx < x + w - winW - 12; wx += colGap) {
-                    for (let wy = y + 42; wy < y + h - winH - 12; wy += rowGap) {
-                        const warm = ((wx + wy) % 5 === 0);
-                        ctx.fillStyle = warm ? 'rgba(255, 226, 146, 0.70)' : windowColor;
+                const colGap = 38;
+                const rowGap = 56;
+                const winW = Math.max(18, Math.min(32, w / 7.5));
+                const winH = 26;
+                for (let wx = x + 28; wx < x + w - winW - 12; wx += colGap) {
+                    for (let wy = y + 44; wy < y + h - winH - 12; wy += rowGap) {
+                        const warm = ((Math.floor(wx / colGap) + Math.floor(wy / rowGap)) % 7 === 0);
+                        ctx.fillStyle = warm ? 'rgba(255, 226, 146, 0.66)' : windowColor;
                         ctx.fillRect(wx, wy, winW, winH);
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.26)';
                         ctx.fillRect(wx + 3, wy + 3, winW - 6, 4);
                     }
                 }
+
+                ctx.strokeStyle = 'rgba(60, 74, 88, 0.24)';
+                ctx.lineWidth = 2;
+                for (let fy = y + 36; fy < y + h; fy += rowGap) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + 14, fy);
+                    ctx.lineTo(x + w - 12, fy);
+                    ctx.stroke();
+                }
             }
 
-            const distantBuildings = [
-                [20, 240, 170, 520, '#9eb3c3', 'rgba(185, 215, 232, 0.76)', '#8198aa'],
-                [1280, 210, 190, 560, '#9caabd', 'rgba(176, 207, 228, 0.70)', '#7f8fa5'],
-                [1060, 260, 160, 490, '#acb9c5', 'rgba(186, 214, 229, 0.68)', '#8b9baa']
+            const backgroundBuildings = [
+                [-30, 260, 220, 820, '#9eb1bf', 'rgba(184, 212, 228, 0.74)', '#8295a6'],
+                [1220, 220, 210, 850, '#9aaabd', 'rgba(176, 207, 228, 0.72)', '#7c8fa4'],
+                [1380, 180, 190, 880, '#a9b6c2', 'rgba(188, 215, 230, 0.70)', '#8b9aaa']
             ];
-            distantBuildings.forEach(args => drawBuilding(...args));
+            backgroundBuildings.forEach(args => drawBuilding(...args));
 
-            const mainBuildings = [
-                [170, 130, 260, 680, '#8799a8', 'rgba(154, 197, 222, 0.88)', '#65798b'],
-                [445, 70, 230, 760, '#7d8f9f', 'rgba(144, 191, 222, 0.86)', '#5f7082'],
-                [700, 118, 300, 720, '#93a0aa', 'rgba(164, 204, 226, 0.86)', '#707f8b'],
-                [1015, 88, 245, 750, '#75889a', 'rgba(136, 184, 216, 0.84)', '#586b7e']
+            const oppositeBuildings = [
+                [145, 72, 295, 980, '#8597a6', 'rgba(152, 197, 224, 0.88)', '#62788a'],
+                [450, 34, 245, 1015, '#76899b', 'rgba(140, 188, 219, 0.86)', '#596c7f'],
+                [710, 86, 315, 950, '#929fa9', 'rgba(164, 204, 226, 0.86)', '#6f7e8b'],
+                [1040, 48, 255, 1005, '#718597', 'rgba(134, 183, 216, 0.84)', '#566a7d']
             ];
-            mainBuildings.forEach(args => drawBuilding(...args));
+            oppositeBuildings.forEach(args => drawBuilding(...args));
 
-            // 窓の下に見える大通り。4階の目線なので車道は下端に圧縮して描く。
-            ctx.fillStyle = '#6f7b82';
-            ctx.fillRect(0, 790, canvas.width, 234);
-            ctx.fillStyle = '#8c969b';
-            ctx.fillRect(0, 755, canvas.width, 42);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
-            ctx.lineWidth = 8;
-            ctx.setLineDash([58, 42]);
-            ctx.beginPath();
-            ctx.moveTo(0, 890);
-            ctx.lineTo(canvas.width, 890);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            const cars = [
-                [120, 845, '#d9514e'], [360, 930, '#f2c14e'], [610, 858, '#f8fafc'],
-                [910, 935, '#2f6fbd'], [1190, 850, '#f8fafc'], [1380, 918, '#404854']
-            ];
-            cars.forEach(([x, y, color]) => {
-                ctx.fillStyle = color;
-                ctx.fillRect(x, y, 92, 28);
-                ctx.fillStyle = 'rgba(30, 44, 58, 0.72)';
-                ctx.fillRect(x + 18, y - 12, 46, 14);
-                ctx.fillStyle = '#1f2933';
-                ctx.beginPath();
-                ctx.arc(x + 20, y + 29, 8, 0, Math.PI * 2);
-                ctx.arc(x + 72, y + 29, 8, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            // 街路樹を濃いめに重ね、白飛びして見えにくかった窓外の情報量を増やす。
-            const treeBases = [90, 215, 335, 505, 650, 820, 975, 1130, 1290, 1440];
-            treeBases.forEach((x, i) => {
-                const trunkH = 155 + (i % 3) * 18;
-                const baseY = 815 + (i % 2) * 15;
-                ctx.fillStyle = '#5a3927';
-                ctx.fillRect(x - 10, baseY - trunkH, 20, trunkH + 22);
-
-                const canopy = ctx.createRadialGradient(x - 8, baseY - trunkH - 30, 18, x, baseY - trunkH - 22, 96);
-                canopy.addColorStop(0, '#7fb069');
-                canopy.addColorStop(0.48, '#3f7c50');
-                canopy.addColorStop(1, '#25583b');
-                ctx.fillStyle = canopy;
-                [[0, -42, 82], [-48, -18, 68], [48, -16, 70], [-24, 34, 64], [28, 38, 66]].forEach(([dx, dy, r]) => {
-                    ctx.beginPath();
-                    ctx.arc(x + dx, baseY - trunkH + dy, r, 0, Math.PI * 2);
-                    ctx.fill();
-                });
-            });
+            // 下端も道路ではなく向かいのビルの低層部として見せる。
+            ctx.fillStyle = 'rgba(70, 82, 94, 0.74)';
+            ctx.fillRect(0, 890, canvas.width, 134);
+            ctx.strokeStyle = 'rgba(220, 230, 236, 0.46)';
+            ctx.lineWidth = 4;
+            for (let x = 42; x < canvas.width; x += 94) {
+                ctx.strokeRect(x, 918, 48, 42);
+                ctx.strokeRect(x + 8, 978, 32, 28);
+            }
 
             // ガラス越しの絵として少しだけ明るい反射を入れるが、眺望を潰さない。
             const shine = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
