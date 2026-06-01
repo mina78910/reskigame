@@ -384,50 +384,195 @@
 
         function createCityWindowTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 1024;
+            canvas.width = 2048;
             canvas.height = 1024;
             const ctx = canvas.getContext('2d');
 
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            sky.addColorStop(0, '#f7fbff');
-            sky.addColorStop(1, '#dcecf7');
+            sky.addColorStop(0, '#91c4ea');
+            sky.addColorStop(0.55, '#cfe7f7');
+            sky.addColorStop(1, '#edf5f8');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // 都内の大通りに面した4階からの眺めとして、向かいのビルを近め・濃いめに描く
             const buildings = [
-                [40, 170, 210, 760], [255, 90, 170, 840], [455, 130, 210, 790],
-                [700, 60, 180, 860], [875, 190, 120, 740]
+                { x: 70, y: 135, w: 360, h: 720, color: '#aeb9bf', trim: '#6c7f8a', glass: '#6fa0bf' },
+                { x: 470, y: 70, w: 310, h: 790, color: '#8fa4b4', trim: '#526c7c', glass: '#b7d7e9' },
+                { x: 830, y: 118, w: 430, h: 750, color: '#c2bbb1', trim: '#766f66', glass: '#7998ac' },
+                { x: 1320, y: 50, w: 300, h: 820, color: '#7f94a4', trim: '#42586a', glass: '#a8cfdf' },
+                { x: 1645, y: 155, w: 325, h: 700, color: '#b5c1c7', trim: '#667783', glass: '#7ba6bf' }
             ];
-            buildings.forEach(([x, y, w, h], index) => {
-                ctx.fillStyle = index % 2 === 0 ? 'rgba(135, 170, 200, 0.72)' : 'rgba(115, 155, 190, 0.64)';
+
+            buildings.forEach((building, index) => {
+                const { x, y, w, h, color, trim, glass } = building;
+                const facade = ctx.createLinearGradient(x, y, x + w, y + h);
+                facade.addColorStop(0, color);
+                facade.addColorStop(1, index % 2 === 0 ? '#8798a0' : '#6d8292');
+                ctx.fillStyle = facade;
                 ctx.fillRect(x, y, w, h);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
-                ctx.lineWidth = 5;
-                for (let gx = x + 24; gx < x + w; gx += 42) {
+
+                ctx.strokeStyle = trim;
+                ctx.lineWidth = 7;
+                ctx.strokeRect(x, y, w, h);
+
+                const windowW = index === 2 ? 58 : 46;
+                const windowH = 42;
+                const gapX = index === 2 ? 78 : 66;
+                const gapY = 74;
+                for (let wx = x + 28; wx < x + w - 24; wx += gapX) {
+                    for (let wy = y + 44; wy < y + h - 44; wy += gapY) {
+                        const lightness = ((wx + wy) / 37) % 3 === 0 ? 0.16 : 0;
+                        ctx.fillStyle = lightness ? 'rgba(255, 242, 190, 0.55)' : glass;
+                        ctx.fillRect(wx, wy, windowW, windowH);
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+                        ctx.fillRect(wx + 6, wy + 5, windowW * 0.55, 5);
+                        ctx.strokeStyle = 'rgba(35, 55, 68, 0.38)';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(wx, wy, windowW, windowH);
+                    }
+                }
+
+                // フロア境界と外階段・庇などの細部で、白一色に見えない密度を出す
+                ctx.strokeStyle = 'rgba(55, 65, 72, 0.26)';
+                ctx.lineWidth = 4;
+                for (let floorY = y + 88; floorY < y + h; floorY += 74) {
                     ctx.beginPath();
-                    ctx.moveTo(gx, y);
-                    ctx.lineTo(gx, y + h);
+                    ctx.moveTo(x, floorY);
+                    ctx.lineTo(x + w, floorY);
                     ctx.stroke();
                 }
-                for (let gy = y + 34; gy < y + h; gy += 58) {
+                if (index === 1 || index === 3) {
+                    ctx.strokeStyle = 'rgba(30, 45, 58, 0.5)';
+                    ctx.lineWidth = 10;
                     ctx.beginPath();
-                    ctx.moveTo(x, gy);
-                    ctx.lineTo(x + w, gy);
+                    ctx.moveTo(x + w - 35, y + 30);
+                    ctx.lineTo(x + w - 35, y + h - 20);
                     ctx.stroke();
+                    for (let stepY = y + 70; stepY < y + h - 40; stepY += 62) {
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(x + w - 68, stepY);
+                        ctx.lineTo(x + w - 8, stepY + 34);
+                        ctx.stroke();
+                    }
                 }
             });
 
-            ctx.strokeStyle = 'rgba(70, 105, 135, 0.26)';
+            // 4階の高さから見下ろす大通り・歩道
+            const roadY = 780;
+            ctx.fillStyle = '#6f7780';
+            ctx.fillRect(0, roadY, canvas.width, canvas.height - roadY);
+            ctx.fillStyle = '#c8c3b7';
+            ctx.fillRect(0, roadY - 48, canvas.width, 70);
+            ctx.fillStyle = '#8d9398';
+            ctx.fillRect(0, roadY - 8, canvas.width, 18);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.72)';
             ctx.lineWidth = 6;
-            for (let x = 170; x < canvas.width; x += 260) {
+            for (let laneX = 80; laneX < canvas.width; laneX += 220) {
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
+                ctx.moveTo(laneX, roadY + 116);
+                ctx.lineTo(laneX + 120, roadY + 116);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = 'rgba(80, 90, 95, 0.35)';
+            ctx.lineWidth = 3;
+            for (let curbX = 0; curbX < canvas.width; curbX += 80) {
+                ctx.beginPath();
+                ctx.moveTo(curbX, roadY - 43);
+                ctx.lineTo(curbX + 45, roadY - 43);
                 ctx.stroke();
             }
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            // 街路樹を窓の外の主役として濃く重ねる
+            function drawStreetTree(cx, baseY, scale, canopyColor) {
+                ctx.fillStyle = '#6d4d33';
+                ctx.fillRect(cx - 12 * scale, baseY - 230 * scale, 24 * scale, 235 * scale);
+                ctx.fillStyle = '#8b6848';
+                ctx.fillRect(cx - 4 * scale, baseY - 225 * scale, 7 * scale, 220 * scale);
+                ctx.strokeStyle = '#75563a';
+                ctx.lineWidth = 10 * scale;
+                ctx.beginPath();
+                ctx.moveTo(cx, baseY - 170 * scale);
+                ctx.lineTo(cx - 70 * scale, baseY - 260 * scale);
+                ctx.moveTo(cx + 2 * scale, baseY - 190 * scale);
+                ctx.lineTo(cx + 78 * scale, baseY - 285 * scale);
+                ctx.stroke();
+
+                const blobs = [
+                    [-95, -295, 82], [-35, -335, 96], [48, -322, 88],
+                    [112, -275, 76], [-6, -256, 98], [-125, -240, 64]
+                ];
+                blobs.forEach(([dx, dy, r], i) => {
+                    const grad = ctx.createRadialGradient(
+                        cx + dx * scale - r * 0.22 * scale, baseY + dy * scale - r * 0.25 * scale, r * 0.08 * scale,
+                        cx + dx * scale, baseY + dy * scale, r * scale
+                    );
+                    grad.addColorStop(0, i % 2 ? '#83b75c' : '#77ad55');
+                    grad.addColorStop(0.65, canopyColor);
+                    grad.addColorStop(1, '#3f743c');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(cx + dx * scale, baseY + dy * scale, r * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            [150, 420, 705, 1030, 1325, 1600, 1880].forEach((x, index) => {
+                drawStreetTree(x, 935 + (index % 2) * 28, 0.92 + (index % 3) * 0.08, index % 2 ? '#4f8e43' : '#5a9a48');
+            });
+
+            // 通行車両と小さな標識で都心の大通りらしさを補足
+            const cars = [
+                [250, 884, 125, '#d34c3f'], [840, 920, 150, '#f0c84b'],
+                [1275, 872, 118, '#2f72b7'], [1715, 926, 160, '#f6f7f8']
+            ];
+            cars.forEach(([x, y, w, color]) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x, y, w, 32);
+                ctx.fillStyle = 'rgba(40, 55, 65, 0.75)';
+                ctx.fillRect(x + 22, y - 18, w * 0.45, 20);
+                ctx.fillStyle = '#222';
+                ctx.beginPath();
+                ctx.arc(x + 25, y + 34, 12, 0, Math.PI * 2);
+                ctx.arc(x + w - 24, y + 34, 12, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.fillStyle = '#345c7a';
+            ctx.fillRect(1180, 620, 150, 46);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillText('TOKYO', 1211, 652);
+            ctx.fillStyle = '#5c6770';
+            ctx.fillRect(1248, 666, 10, 92);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
+
+        function createWindowShineTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const shine = ctx.createLinearGradient(40, 0, 420, canvas.height);
+            shine.addColorStop(0.0, 'rgba(255, 255, 255, 0)');
+            shine.addColorStop(0.42, 'rgba(255, 255, 255, 0)');
+            shine.addColorStop(0.48, 'rgba(255, 255, 255, 0.34)');
+            shine.addColorStop(0.54, 'rgba(255, 255, 255, 0.08)');
+            shine.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = shine;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.lineWidth = 18;
+            ctx.beginPath();
+            ctx.moveTo(390, 0);
+            ctx.lineTo(180, canvas.height);
+            ctx.stroke();
 
             const texture = new THREE.CanvasTexture(canvas);
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -522,20 +667,29 @@
         
         const cityView = new THREE.Mesh(
             new THREE.PlaneGeometry(breakDepth, roomHeight),
-            new THREE.MeshBasicMaterial({ map: createCityWindowTexture() })
+            new THREE.MeshBasicMaterial({ map: createCityWindowTexture(), toneMapped: false })
         );
         cityView.rotation.y = Math.PI / 2;
         cityView.position.set(-roomWidth / 2 - breakWidth - 0.08, roomHeight / 2, breakZ);
         scene.add(cityView);
 
-        const breakGlassMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, transparent: true, opacity: 0.22,
-            roughness: 0.04, metalness: 0.12, emissive: 0xffffff, emissiveIntensity: 0.12
+        const breakGlassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xdff4ff, transparent: true, opacity: 0.18,
+            roughness: 0.02, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.03,
+            emissive: 0xffffff, emissiveIntensity: 0.035, side: THREE.DoubleSide
         });
         const breakGlass = new THREE.Mesh(new THREE.PlaneGeometry(breakDepth, roomHeight), breakGlassMat);
         breakGlass.rotation.y = Math.PI / 2;
         breakGlass.position.set(-roomWidth / 2 - breakWidth + 0.01, roomHeight / 2, breakZ);
         scene.add(breakGlass);
+
+        const glassShine = new THREE.Mesh(
+            new THREE.PlaneGeometry(breakDepth, roomHeight),
+            new THREE.MeshBasicMaterial({ map: createWindowShineTexture(), transparent: true, opacity: 0.42, depthWrite: false, toneMapped: false })
+        );
+        glassShine.rotation.y = Math.PI / 2;
+        glassShine.position.set(-roomWidth / 2 - breakWidth + 0.015, roomHeight / 2, breakZ);
+        scene.add(glassShine);
 
         const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
         for (let z = -roomDepth / 2; z <= 0.01; z += breakDepth / 3) {
