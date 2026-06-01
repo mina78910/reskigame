@@ -384,50 +384,118 @@
 
         function createCityWindowTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 1024;
+            canvas.width = 1536;
             canvas.height = 1024;
             const ctx = canvas.getContext('2d');
 
+            // 4階から大通り越しに見る想定なので、道路や地面は描かず、
+            // 窓いっぱいに向かいのビルのファサードが入る構図にする。
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            sky.addColorStop(0, '#f7fbff');
-            sky.addColorStop(1, '#dcecf7');
+            sky.addColorStop(0, '#bcd8ed');
+            sky.addColorStop(0.42, '#d7e8f4');
+            sky.addColorStop(1, '#e8f1f8');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const buildings = [
-                [40, 170, 210, 760], [255, 90, 170, 840], [455, 130, 210, 790],
-                [700, 60, 180, 860], [875, 190, 120, 740]
-            ];
-            buildings.forEach(([x, y, w, h], index) => {
-                ctx.fillStyle = index % 2 === 0 ? 'rgba(135, 170, 200, 0.72)' : 'rgba(115, 155, 190, 0.64)';
+            function drawFacade({ x, y, w, h, base, side, trim, window, lit, columns, rows, mullion }) {
+                const facadeGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                facadeGrad.addColorStop(0, side);
+                facadeGrad.addColorStop(0.28, base);
+                facadeGrad.addColorStop(0.72, base);
+                facadeGrad.addColorStop(1, side);
+                ctx.fillStyle = facadeGrad;
                 ctx.fillRect(x, y, w, h);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
-                ctx.lineWidth = 5;
-                for (let gx = x + 24; gx < x + w; gx += 42) {
-                    ctx.beginPath();
-                    ctx.moveTo(gx, y);
-                    ctx.lineTo(gx, y + h);
-                    ctx.stroke();
-                }
-                for (let gy = y + 34; gy < y + h; gy += 58) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, gy);
-                    ctx.lineTo(x + w, gy);
-                    ctx.stroke();
-                }
-            });
 
-            ctx.strokeStyle = 'rgba(70, 105, 135, 0.26)';
-            ctx.lineWidth = 6;
-            for (let x = 170; x < canvas.width; x += 260) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
+                ctx.fillStyle = 'rgba(26, 43, 58, 0.15)';
+                ctx.fillRect(x + w - 12, y + 18, 12, h - 18);
+                ctx.strokeStyle = trim;
+                ctx.lineWidth = 4;
+                ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+
+                const padX = 18;
+                const padY = 24;
+                const gapX = 10;
+                const gapY = 12;
+                const cellW = (w - padX * 2 - gapX * (columns - 1)) / columns;
+                const cellH = (h - padY * 2 - gapY * (rows - 1)) / rows;
+
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < columns; col++) {
+                        const wx = x + padX + col * (cellW + gapX);
+                        const wy = y + padY + row * (cellH + gapY);
+                        const windowGrad = ctx.createLinearGradient(wx, wy, wx + cellW, wy + cellH);
+                        const warm = ((row + col) % 7 === 0) || ((row * 3 + col) % 13 === 0);
+                        windowGrad.addColorStop(0, warm ? lit : window);
+                        windowGrad.addColorStop(0.55, '#8fb4cc');
+                        windowGrad.addColorStop(1, '#42677c');
+                        ctx.fillStyle = windowGrad;
+                        ctx.fillRect(wx, wy, cellW, cellH);
+
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+                        ctx.fillRect(wx + 3, wy + 3, Math.max(3, cellW * 0.16), cellH - 6);
+                        ctx.fillStyle = 'rgba(17, 35, 49, 0.18)';
+                        ctx.fillRect(wx, wy + cellH - 4, cellW, 4);
+                    }
+                }
+
+                ctx.strokeStyle = mullion;
+                ctx.lineWidth = 3;
+                for (let col = 1; col < columns; col++) {
+                    const mx = x + padX + col * cellW + (col - 0.5) * gapX;
+                    ctx.beginPath();
+                    ctx.moveTo(mx, y + padY - 6);
+                    ctx.lineTo(mx, y + h - padY + 6);
+                    ctx.stroke();
+                }
+                for (let row = 1; row < rows; row++) {
+                    const my = y + padY + row * cellH + (row - 0.5) * gapY;
+                    ctx.beginPath();
+                    ctx.moveTo(x + 10, my);
+                    ctx.lineTo(x + w - 10, my);
+                    ctx.stroke();
+                }
             }
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            drawFacade({
+                x: -40, y: 72, w: 410, h: 900,
+                base: '#7d95a3', side: '#657f8f', trim: 'rgba(216, 228, 235, 0.72)',
+                window: '#5f8da7', lit: '#d8c9a4', columns: 6, rows: 11,
+                mullion: 'rgba(235, 241, 244, 0.42)'
+            });
+            drawFacade({
+                x: 330, y: 14, w: 380, h: 996,
+                base: '#a9957f', side: '#816d5e', trim: 'rgba(236, 224, 207, 0.75)',
+                window: '#66899b', lit: '#e5d3a6', columns: 5, rows: 13,
+                mullion: 'rgba(93, 76, 62, 0.34)'
+            });
+            drawFacade({
+                x: 680, y: 92, w: 520, h: 900,
+                base: '#718998', side: '#566d7d', trim: 'rgba(216, 229, 236, 0.78)',
+                window: '#577f98', lit: '#d9c799', columns: 8, rows: 10,
+                mullion: 'rgba(232, 238, 242, 0.38)'
+            });
+            drawFacade({
+                x: 1160, y: 38, w: 420, h: 970,
+                base: '#8a9aa0', side: '#697c84', trim: 'rgba(230, 236, 238, 0.72)',
+                window: '#587d90', lit: '#dcc99c', columns: 6, rows: 12,
+                mullion: 'rgba(245, 248, 249, 0.36)'
+            });
+
+            // 遠景の白飛びを避けつつ、ガラス越しの反射だけを最後に重ねる。
+            const haze = ctx.createLinearGradient(0, 0, canvas.width, 0);
+            haze.addColorStop(0, 'rgba(255, 255, 255, 0.10)');
+            haze.addColorStop(0.5, 'rgba(255, 255, 255, 0.03)');
+            haze.addColorStop(1, 'rgba(255, 255, 255, 0.12)');
+            ctx.fillStyle = haze;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.globalAlpha = 0.26;
+            ctx.fillStyle = '#ffffff';
+            ctx.transform(1, 0, -0.35, 1, 0, 0);
+            ctx.fillRect(220, -80, 34, canvas.height + 260);
+            ctx.fillRect(980, -120, 18, canvas.height + 260);
+            ctx.restore();
 
             const texture = new THREE.CanvasTexture(canvas);
             texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -529,8 +597,13 @@
         scene.add(cityView);
 
         const breakGlassMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, transparent: true, opacity: 0.22,
-            roughness: 0.04, metalness: 0.12, emissive: 0xffffff, emissiveIntensity: 0.12
+            color: 0xbfd8ea,
+            transparent: true,
+            opacity: 0.16,
+            roughness: 0.02,
+            metalness: 0.28,
+            emissive: 0x9fc7de,
+            emissiveIntensity: 0.035
         });
         const breakGlass = new THREE.Mesh(new THREE.PlaneGeometry(breakDepth, roomHeight), breakGlassMat);
         breakGlass.rotation.y = Math.PI / 2;
