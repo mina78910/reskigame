@@ -3048,17 +3048,24 @@
                 const elevatorWalkRight = elevatorHallRightX - 0.35;
                 const elevatorWalkBackZ = elevatorHallBackZ + 0.45;
                 const elevatorWalkFrontZ = elevatorHallFrontZ + 0.25;
-                const inAlcoveMouth = camera.position.x > alcoveAllowedLeft && camera.position.x < alcoveAllowedRight;
-                const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft && camera.position.x < leftNicheAllowedRight;
-                const inNewHallMouth = camera.position.x > newHallAllowedLeft && camera.position.x < newHallAllowedRight;
+                // アルコーブ判定は X 範囲だけだと奥の廊下（同じ X=約4.8）でも成立し、
+                // Z=15 付近からアルコーブ上限まで押し戻されてワープに見えるため、手前側だけに限定する。
+                const inAlcoveMouth = camera.position.x > alcoveAllowedLeft
+                    && camera.position.x < alcoveAllowedRight
+                    && camera.position.z <= zAlcoveBound + 0.25;
+                const inLeftNicheMouth = camera.position.x > leftNicheAllowedLeft
+                    && camera.position.x < leftNicheAllowedRight
+                    && camera.position.z <= zLeftNicheBound + 0.25;
+                const inNewHallMouth = camera.position.x > newHallAllowedLeft
+                    && camera.position.x < newHallAllowedRight
+                    && camera.position.z <= zNewHallBound + 0.25;
                 const inCrossCorridor = camera.position.z > crossWalkStartZ - 0.15
                     && camera.position.z < crossWalkEndZ + 0.15
                     && camera.position.x > crossWalkLeft - 0.35
                     && camera.position.x < crossWalkRight + 0.35;
                 const inCorridor1 = camera.position.x > corridorWalkLeft - 0.2
                     && camera.position.x < corridorWalkRight + 0.2
-                    && camera.position.z > corridorWalkStartZ
-                    && camera.position.z < corridorWalkEndZ + 0.2;
+                    && camera.position.z > corridorWalkStartZ;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35
                     && camera.position.z < crossWalkEndZ + 0.1
                     && camera.position.x > entranceWalkLeft - 0.4
