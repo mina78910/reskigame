@@ -2912,6 +2912,8 @@
                     if (Math.abs(direction.x) > 0.05) velocity.x -= direction.x * speed * delta;
                 }
 
+                const previousPosition = camera.position.clone();
+
                 moveVector.setFromMatrixColumn(camera.matrix, 0); 
                 camera.position.addScaledVector(moveVector, -velocity.x * delta);
                 
@@ -2993,7 +2995,17 @@
                 } else if (inNewHallMouth) {
                     if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
                 } else if (camera.position.z > zLockerBound) {
-                    camera.position.z = zLockerBound;
+                    // 廊下・玄関などメインルーム外で壁の外側へ押し出されると、
+                    // 以前は zLockerBound へ直接戻していたため、メインルームへ瞬間移動したように見えていた。
+                    // すでにメインルーム外にいる場合は直前の有効位置へ戻し、壁に押し当て続けても場所が飛ばないようにする。
+                    if (previousPosition.z > zLockerBound) {
+                        camera.position.x = previousPosition.x;
+                        camera.position.z = previousPosition.z;
+                        velocity.x = 0;
+                        velocity.z = 0;
+                    } else {
+                        camera.position.z = zLockerBound;
+                    }
                 }
             }
 
