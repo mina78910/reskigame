@@ -399,49 +399,114 @@
 
         function createCityWindowTexture() {
             const canvas = document.createElement('canvas');
-            canvas.width = 1024;
+            canvas.width = 1600;
             canvas.height = 1024;
             const ctx = canvas.getContext('2d');
 
+            // 4階オフィスの窓から正面に見える、都内大通り沿いの向かい側ビル群。
+            // 道路は角度的に入れず、大判ガラス窓のファサードだけで外景を作る。
             const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            sky.addColorStop(0, '#f7fbff');
-            sky.addColorStop(1, '#dcecf7');
+            sky.addColorStop(0, '#cfddea');
+            sky.addColorStop(0.48, '#dbe7f1');
+            sky.addColorStop(1, '#c8d6e0');
             ctx.fillStyle = sky;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            const buildings = [
-                [40, 170, 210, 760], [255, 90, 170, 840], [455, 130, 210, 790],
-                [700, 60, 180, 860], [875, 190, 120, 740]
-            ];
-            buildings.forEach(([x, y, w, h], index) => {
-                ctx.fillStyle = index % 2 === 0 ? 'rgba(135, 170, 200, 0.72)' : 'rgba(115, 155, 190, 0.64)';
+            // 遠景に薄いビル影を入れ、白飛びせず奥行きだけを足す。
+            ctx.fillStyle = 'rgba(80, 105, 125, 0.18)';
+            [[-60, 120, 210, 880], [1250, 90, 260, 920], [1450, 160, 180, 820]].forEach(([x, y, w, h]) => {
                 ctx.fillRect(x, y, w, h);
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.86)';
-                ctx.lineWidth = 5;
-                for (let gx = x + 24; gx < x + w; gx += 42) {
-                    ctx.beginPath();
-                    ctx.moveTo(gx, y);
-                    ctx.lineTo(gx, y + h);
-                    ctx.stroke();
-                }
-                for (let gy = y + 34; gy < y + h; gy += 58) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, gy);
-                    ctx.lineTo(x + w, gy);
-                    ctx.stroke();
-                }
             });
 
-            ctx.strokeStyle = 'rgba(70, 105, 135, 0.26)';
-            ctx.lineWidth = 6;
-            for (let x = 170; x < canvas.width; x += 260) {
+            const buildings = [
+                { x: 30, y: 170, w: 350, h: 854, body: '#8fa0ad', side: '#738693', mullion: '#526775', glassA: '#9eb8ca', glassB: '#7899ad', accent: '#c6d9e4' },
+                { x: 360, y: 75, w: 430, h: 949, body: '#6f7f8b', side: '#596b77', mullion: '#3f5665', glassA: '#91adbf', glassB: '#6f91a5', accent: '#d8e7ef' },
+                { x: 765, y: 135, w: 360, h: 889, body: '#9a948b', side: '#77736d', mullion: '#5e625f', glassA: '#a9c1cf', glassB: '#849eac', accent: '#eef5f8' },
+                { x: 1085, y: 55, w: 470, h: 969, body: '#798996', side: '#61737f', mullion: '#475c68', glassA: '#9cb6c8', glassB: '#7394a8', accent: '#cfdee7' }
+            ];
+
+            function drawLargePaneBuilding(building, index) {
+                const { x, y, w, h, body, side, mullion, glassA, glassB, accent } = building;
+                const bodyGrad = ctx.createLinearGradient(x, y, x + w, y);
+                bodyGrad.addColorStop(0, side);
+                bodyGrad.addColorStop(0.14, body);
+                bodyGrad.addColorStop(0.78, body);
+                bodyGrad.addColorStop(1, side);
+                ctx.fillStyle = bodyGrad;
+                ctx.fillRect(x, y, w, h);
+
+                ctx.fillStyle = 'rgba(38, 48, 56, 0.15)';
+                ctx.fillRect(x, y, 12, h);
+                ctx.fillRect(x + w - 16, y, 16, h);
+
+                const inset = index === 1 ? 42 : 34;
+                const paneGapX = index === 3 ? 22 : 18;
+                const paneGapY = index === 0 ? 26 : 30;
+                const columns = index === 1 ? 3 : 2;
+                const rows = index === 2 ? 5 : 6;
+                const usableW = w - inset * 2;
+                const usableH = h - 62;
+                const paneW = (usableW - paneGapX * (columns - 1)) / columns;
+                const paneH = (usableH - paneGapY * (rows - 1)) / rows;
+
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < columns; col++) {
+                        const px = x + inset + col * (paneW + paneGapX);
+                        const py = y + 32 + row * (paneH + paneGapY);
+                        const paneGrad = ctx.createLinearGradient(px, py, px + paneW, py + paneH);
+                        paneGrad.addColorStop(0, glassA);
+                        paneGrad.addColorStop(0.55, glassB);
+                        paneGrad.addColorStop(1, '#5d7f92');
+                        ctx.fillStyle = paneGrad;
+                        ctx.fillRect(px, py, paneW, paneH);
+
+                        ctx.strokeStyle = mullion;
+                        ctx.lineWidth = 6;
+                        ctx.strokeRect(px, py, paneW, paneH);
+
+                        // 大きな窓らしく、各パネルに太い反射帯と室内の暗い映り込みを入れる。
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+                        ctx.beginPath();
+                        ctx.moveTo(px + paneW * 0.08, py + paneH * 0.08);
+                        ctx.lineTo(px + paneW * 0.42, py + paneH * 0.08);
+                        ctx.lineTo(px + paneW * 0.20, py + paneH * 0.92);
+                        ctx.lineTo(px, py + paneH * 0.92);
+                        ctx.closePath();
+                        ctx.fill();
+
+                        ctx.fillStyle = 'rgba(25, 38, 48, 0.10)';
+                        ctx.fillRect(px + 10, py + paneH * 0.68, paneW - 20, paneH * 0.18);
+                    }
+                }
+
+                ctx.strokeStyle = mullion;
+                ctx.lineWidth = 10;
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
+                ctx.moveTo(x + inset - 10, y + 18);
+                ctx.lineTo(x + w - inset + 10, y + 18);
                 ctx.stroke();
+
+                ctx.fillStyle = accent;
+                ctx.globalAlpha = 0.25;
+                ctx.fillRect(x + w * 0.18, y + 12, w * 0.38, 6);
+                ctx.globalAlpha = 1;
             }
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+            buildings.forEach(drawLargePaneBuilding);
+
+            // 近接する大通り向かいのビルだけが見えるよう、道路や低層物は描かず、
+            // 下端までビルの壁面で埋めて視界の密度を上げる。
+            ctx.fillStyle = 'rgba(36, 48, 57, 0.20)';
+            ctx.fillRect(0, canvas.height - 52, canvas.width, 52);
+            ctx.fillStyle = 'rgba(205, 220, 230, 0.22)';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 3);
+
+            // 窓ガラス越しの軽い色味だけを加え、白いベールは避ける。
+            const glassTint = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            glassTint.addColorStop(0, 'rgba(140, 185, 215, 0.10)');
+            glassTint.addColorStop(0.55, 'rgba(255, 255, 255, 0.03)');
+            glassTint.addColorStop(1, 'rgba(65, 95, 120, 0.10)');
+            ctx.fillStyle = glassTint;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const texture = new THREE.CanvasTexture(canvas);
@@ -544,13 +609,27 @@
         scene.add(cityView);
 
         const breakGlassMat = new THREE.MeshStandardMaterial({
-            color: 0xffffff, transparent: true, opacity: 0.22,
-            roughness: 0.04, metalness: 0.12, emissive: 0xffffff, emissiveIntensity: 0.12
+            color: 0xd8f1ff, transparent: true, opacity: 0.13,
+            roughness: 0.02, metalness: 0.22, emissive: 0x7fb4d8, emissiveIntensity: 0.04
         });
         const breakGlass = new THREE.Mesh(new THREE.PlaneGeometry(breakDepth, roomHeight), breakGlassMat);
         breakGlass.rotation.y = Math.PI / 2;
         breakGlass.position.set(-roomWidth / 2 - breakWidth + 0.01, roomHeight / 2, breakZ);
         scene.add(breakGlass);
+
+        const glassHighlightMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0.24,
+            blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
+        });
+        [
+            { z: breakZ - 1.85, y: roomHeight * 0.66, w: 1.25, h: roomHeight * 1.1, r: -0.36 },
+            { z: breakZ + 1.25, y: roomHeight * 0.42, w: 0.56, h: roomHeight * 0.9, r: -0.36 }
+        ].forEach(({ z, y, w, h, r }) => {
+            const shine = new THREE.Mesh(new THREE.PlaneGeometry(w, h), glassHighlightMat);
+            shine.rotation.set(0, Math.PI / 2, r);
+            shine.position.set(-roomWidth / 2 - breakWidth + 0.025, y, z);
+            scene.add(shine);
+        });
 
         const windowFrameMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 });
         for (let z = -roomDepth / 2; z <= 0.01; z += breakDepth / 3) {
