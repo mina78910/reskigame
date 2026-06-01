@@ -620,6 +620,28 @@
         });
         const leftNicheBackZ = frontExtensionStartZ + leftNicheDepth;
         const lockerBankStartX = newDoorEnd + ENTRANCE_LAYOUT.lockerGapFromDoor;
+        const elevatorCarWidth = 1.55;
+        const elevatorCarDepth = 2.0;
+        const elevatorGap = 0.35;
+        const elevatorBankLeftX = lockerBankStartX + 0.85;
+        const elevatorBankRightX = elevatorBankLeftX + elevatorCarWidth * 2 + elevatorGap;
+        const elevatorForecourtPaddingX = 0.75;
+        const elevatorForecourtStartZ = roomDepth / 2 + elevatorCarDepth;
+        const elevatorForecourtEndZ = elevatorForecourtStartZ + 4.15;
+        const ELEVATOR_LAYOUT = Object.freeze({
+            backZ: roomDepth / 2,
+            depth: elevatorCarDepth,
+            frontZ: elevatorForecourtStartZ,
+            carWidth: elevatorCarWidth,
+            gap: elevatorGap,
+            leftX: elevatorBankLeftX,
+            rightX: elevatorBankRightX,
+            centerX: (elevatorBankLeftX + elevatorBankRightX) / 2,
+            forecourtLeftX: elevatorBankLeftX - elevatorForecourtPaddingX,
+            forecourtRightX: elevatorBankRightX + elevatorForecourtPaddingX,
+            forecourtStartZ: elevatorForecourtStartZ,
+            forecourtEndZ: elevatorForecourtEndZ
+        });
         const sharedNicheEntranceWallX = leftNicheEnd + 0.1;
 
         const meetingDoorWidth = newDoorWidth;
@@ -1216,6 +1238,127 @@
             return patch;
         }
 
+        function createElevatorDoorNumberTexture(number) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#111827';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#d1d5db';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+            ctx.fillStyle = '#f9fafb';
+            ctx.font = 'bold 58px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`ELEVATOR ${number}`, canvas.width / 2, canvas.height / 2);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createElevatorHall() {
+            const hallWidth = ELEVATOR_LAYOUT.forecourtRightX - ELEVATOR_LAYOUT.forecourtLeftX;
+            const hallDepth = ELEVATOR_LAYOUT.forecourtEndZ - ELEVATOR_LAYOUT.backZ;
+            const hallCenterX = (ELEVATOR_LAYOUT.forecourtLeftX + ELEVATOR_LAYOUT.forecourtRightX) / 2;
+            const hallCenterZ = (ELEVATOR_LAYOUT.backZ + ELEVATOR_LAYOUT.forecourtEndZ) / 2;
+            const hallFloorTex = createEntranceFloorTexture();
+            hallFloorTex.repeat.set(hallWidth / 2.2, hallDepth / 2.2);
+            const hallFloor = new THREE.Mesh(
+                new THREE.PlaneGeometry(hallWidth, hallDepth),
+                new THREE.MeshStandardMaterial({ map: hallFloorTex, roughness: 0.92 })
+            );
+            hallFloor.rotation.x = -Math.PI / 2;
+            hallFloor.position.set(hallCenterX, 0.01, hallCenterZ);
+            hallFloor.receiveShadow = true;
+            scene.add(hallFloor);
+
+            const shaftMat = new THREE.MeshStandardMaterial({ color: 0xbfc5cd, roughness: 0.68, metalness: 0.08 });
+            const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x222832, roughness: 0.55, metalness: 0.22 });
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xcfd5dc, roughness: 0.34, metalness: 0.58 });
+            const seamMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 });
+            const callMat = new THREE.MeshStandardMaterial({ color: 0x101418, roughness: 0.35, metalness: 0.45 });
+            const callButtonMat = new THREE.MeshStandardMaterial({ color: 0xffd166, roughness: 0.25, metalness: 0.5, emissive: 0xffb703, emissiveIntensity: 0.25 });
+            const elevatorHeight = 3.05;
+            const carCenters = [
+                ELEVATOR_LAYOUT.leftX + ELEVATOR_LAYOUT.carWidth / 2,
+                ELEVATOR_LAYOUT.leftX + ELEVATOR_LAYOUT.carWidth + ELEVATOR_LAYOUT.gap + ELEVATOR_LAYOUT.carWidth / 2
+            ];
+
+            carCenters.forEach((carX, index) => {
+                const car = new THREE.Group();
+                car.position.set(carX, 0, ELEVATOR_LAYOUT.backZ);
+
+                const backPanel = new THREE.Mesh(new THREE.BoxGeometry(ELEVATOR_LAYOUT.carWidth, elevatorHeight, 0.12), shaftMat);
+                backPanel.position.set(0, elevatorHeight / 2, 0.06);
+                backPanel.castShadow = true;
+                backPanel.receiveShadow = true;
+                car.add(backPanel);
+
+                const sidePanelWidth = 0.12;
+                [-1, 1].forEach((side) => {
+                    const sidePanel = new THREE.Mesh(new THREE.BoxGeometry(sidePanelWidth, elevatorHeight, ELEVATOR_LAYOUT.depth), shaftMat);
+                    sidePanel.position.set(side * (ELEVATOR_LAYOUT.carWidth / 2 - sidePanelWidth / 2), elevatorHeight / 2, ELEVATOR_LAYOUT.depth / 2);
+                    sidePanel.castShadow = true;
+                    sidePanel.receiveShadow = true;
+                    car.add(sidePanel);
+                });
+
+                const topPanel = new THREE.Mesh(new THREE.BoxGeometry(ELEVATOR_LAYOUT.carWidth, 0.14, ELEVATOR_LAYOUT.depth), darkTrimMat);
+                topPanel.position.set(0, elevatorHeight - 0.07, ELEVATOR_LAYOUT.depth / 2);
+                topPanel.castShadow = true;
+                car.add(topPanel);
+
+                const frontFrame = new THREE.Mesh(new THREE.BoxGeometry(ELEVATOR_LAYOUT.carWidth + 0.18, elevatorHeight, 0.1), darkTrimMat);
+                frontFrame.position.set(0, elevatorHeight / 2, ELEVATOR_LAYOUT.depth + 0.02);
+                frontFrame.castShadow = true;
+                frontFrame.receiveShadow = true;
+                car.add(frontFrame);
+
+                const doorWidth = ELEVATOR_LAYOUT.carWidth * 0.42;
+                [-1, 1].forEach((side) => {
+                    const door = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, 2.35, 0.055), doorMat);
+                    door.position.set(side * doorWidth / 2, 1.28, ELEVATOR_LAYOUT.depth + 0.08);
+                    door.castShadow = true;
+                    door.receiveShadow = true;
+                    car.add(door);
+                });
+
+                const centerSeam = new THREE.Mesh(new THREE.BoxGeometry(0.025, 2.35, 0.065), seamMat);
+                centerSeam.position.set(0, 1.28, ELEVATOR_LAYOUT.depth + 0.12);
+                car.add(centerSeam);
+
+                const sign = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.9, 0.32),
+                    new THREE.MeshStandardMaterial({ map: createElevatorDoorNumberTexture(index + 1), roughness: 0.42 })
+                );
+                sign.position.set(0, 2.72, ELEVATOR_LAYOUT.depth + 0.135);
+                car.add(sign);
+
+                const sill = new THREE.Mesh(new THREE.BoxGeometry(ELEVATOR_LAYOUT.carWidth + 0.24, 0.055, 0.26), darkTrimMat);
+                sill.position.set(0, 0.03, ELEVATOR_LAYOUT.depth + 0.12);
+                sill.receiveShadow = true;
+                car.add(sill);
+
+                scene.add(car);
+            });
+
+            const callPanel = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.05), callMat);
+            callPanel.position.set(ELEVATOR_LAYOUT.centerX, 1.32, ELEVATOR_LAYOUT.frontZ + 0.14);
+            callPanel.castShadow = true;
+            scene.add(callPanel);
+
+            [1.42, 1.22].forEach((y) => {
+                const button = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.018, 24), callButtonMat);
+                button.rotation.x = Math.PI / 2;
+                button.position.set(ELEVATOR_LAYOUT.centerX, y, ELEVATOR_LAYOUT.frontZ + 0.17);
+                scene.add(button);
+            });
+
+            const light = new THREE.PointLight(0xfff2d2, 0.42, 6);
+            light.position.set(ELEVATOR_LAYOUT.centerX, roomHeight - 0.55, ELEVATOR_LAYOUT.frontZ + 1.4);
+            scene.add(light);
+        }
+
         function createEntranceFloorTexture() {
             const size = 512;
             const canvas = document.createElement('canvas');
@@ -1268,13 +1411,17 @@
         newHallFloor.receiveShadow = true;
         scene.add(newHallFloor);
 
+        createElevatorHall();
+
         // くぼみ右端と玄関左端の共有壁は、くぼみ側で作った壁を使い、奥側の不足分だけ延長する。
         // 同じ境界に2枚の壁を重ねないことで、厚みの二重化と今後の修正漏れを防ぐ。
         createXWallSegment(sharedNicheEntranceWallX, leftNicheBackZ, entranceEndZ, 0xd8d5ca);
         createInsetGlassPanelX(entranceInsetGlass.verticalX, entranceInsetGlass.verticalStartZ, entranceInsetGlass.verticalEndZ);
         createInsetGlassPanelZ(entranceInsetGlass.frontStartX, entranceInsetGlass.frontEndX, entranceInsetGlass.frontZ);
         // 玄関右奥は横廊下との接続口にするため、Z=13 以降の壁を切る。
-        createXWallSegment(entranceRightX + 0.1, entranceStartZ, corridorTurnStartZ, 0xd8d5ca);
+        // さらにエレベーターホール前は壁や廊下で塞がない床だけの余白にするため、
+        // 玄関右壁はエレベーター前面の少し手前までで止める。
+        createXWallSegment(entranceRightX + 0.1, entranceStartZ, ELEVATOR_LAYOUT.frontZ - 0.25, 0xd8d5ca);
         createWall(entranceWidth + 0.4, roomHeight, 0.2, entranceCenterX, roomHeight / 2, entranceEndZ + 0.1, 0xd8d5ca);
 
         const entranceWarmLight = new THREE.PointLight(0xffe5a8, 0.52, 8);
@@ -2970,10 +3117,18 @@
                     && camera.position.x < corridorWalkRight + 0.2
                     && camera.position.z > corridorWalkStartZ
                     && camera.position.z < corridorWalkEndZ + 0.2;
+                const elevatorWalkLeft = ELEVATOR_LAYOUT.forecourtLeftX + 0.35;
+                const elevatorWalkRight = ELEVATOR_LAYOUT.forecourtRightX - 0.35;
+                const elevatorWalkStartZ = ELEVATOR_LAYOUT.backZ + 0.45;
+                const elevatorWalkEndZ = ELEVATOR_LAYOUT.forecourtEndZ - 0.35;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35
                     && camera.position.z < crossWalkEndZ + 0.1
                     && camera.position.x > entranceWalkLeft - 0.4
                     && camera.position.x < entranceWalkRight + 0.55;
+                const inElevatorForecourt = camera.position.z > elevatorWalkStartZ - 0.2
+                    && camera.position.z < elevatorWalkEndZ + 0.2
+                    && camera.position.x > elevatorWalkLeft - 0.3
+                    && camera.position.x < elevatorWalkRight + 0.3;
 
                 if (inCrossCorridor) {
                     if (camera.position.x < crossWalkLeft) camera.position.x = crossWalkLeft;
@@ -2984,6 +3139,11 @@
                     if (camera.position.x < corridorWalkLeft) camera.position.x = corridorWalkLeft;
                     if (camera.position.x > corridorWalkRight) camera.position.x = corridorWalkRight;
                     if (camera.position.z > corridorWalkEndZ) camera.position.z = corridorWalkEndZ;
+                } else if (inElevatorForecourt) {
+                    if (camera.position.x < elevatorWalkLeft) camera.position.x = elevatorWalkLeft;
+                    if (camera.position.x > elevatorWalkRight) camera.position.x = elevatorWalkRight;
+                    if (camera.position.z < elevatorWalkStartZ) camera.position.z = elevatorWalkStartZ;
+                    if (camera.position.z > elevatorWalkEndZ) camera.position.z = elevatorWalkEndZ;
                 } else if (inEntranceArea) {
                     if (camera.position.x < entranceWalkLeft) camera.position.x = entranceWalkLeft;
                     if (camera.position.x > entranceWalkRight) camera.position.x = entranceWalkRight;
