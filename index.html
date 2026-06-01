@@ -69,6 +69,158 @@
       font-size: 1.1rem;
     }
 
+    .opening-tutorial {
+      width: min(760px, 88vw);
+      margin: 28px 0 8px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      opacity: 0.72;
+      pointer-events: none;
+    }
+
+    .tutorial-card {
+      min-height: 178px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 35%, rgba(96, 165, 250, 0.18), transparent 44%),
+        rgba(255, 255, 255, 0.075);
+      box-shadow: inset 0 0 40px rgba(255, 255, 255, 0.035);
+    }
+
+    .tutorial-label {
+      position: absolute;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      width: 90%;
+      color: rgba(226, 232, 240, 0.92);
+      font-size: 0.95rem;
+      letter-spacing: 0.04em;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+    }
+
+    .tutorial-device {
+      position: absolute;
+      left: 50%;
+      top: 24px;
+      width: 180px;
+      height: 96px;
+      transform: translateX(-50%);
+      border: 2px solid rgba(226, 232, 240, 0.42);
+      border-radius: 22px;
+      background: rgba(15, 23, 42, 0.18);
+    }
+
+    .tutorial-zone {
+      position: absolute;
+      top: 9px;
+      bottom: 9px;
+      width: 50%;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .tutorial-zone.left { left: 9px; }
+    .tutorial-zone.right { right: 9px; }
+
+    .tutorial-joystick {
+      position: absolute;
+      left: 38px;
+      top: 26px;
+      width: 54px;
+      height: 54px;
+      border: 2px solid rgba(147, 197, 253, 0.74);
+      border-radius: 50%;
+      box-shadow: 0 0 22px rgba(96, 165, 250, 0.36);
+    }
+
+    .tutorial-joystick::after {
+      content: '';
+      position: absolute;
+      left: 17px;
+      top: 13px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(191, 219, 254, 0.72);
+      box-shadow: 0 0 14px rgba(147, 197, 253, 0.58);
+    }
+
+    .tutorial-thumb {
+      position: absolute;
+      width: 34px;
+      height: 48px;
+      border-radius: 22px 22px 18px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(203,213,225,0.34));
+      filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.35));
+    }
+
+    .tutorial-thumb.left {
+      left: 72px;
+      top: 52px;
+      transform: rotate(-20deg);
+    }
+
+    .tutorial-thumb.right {
+      right: 58px;
+      top: 46px;
+      transform: rotate(20deg);
+    }
+
+    .tutorial-arrows {
+      position: absolute;
+      inset: 0;
+      color: rgba(147, 197, 253, 0.78);
+      font-size: 1.65rem;
+      line-height: 1;
+      text-shadow: 0 0 12px rgba(96, 165, 250, 0.55);
+    }
+
+    .tutorial-arrows span {
+      position: absolute;
+    }
+
+    .tutorial-arrows .up { left: 61px; top: 12px; }
+    .tutorial-arrows .down { left: 62px; top: 74px; }
+    .tutorial-arrows .left { left: 30px; top: 43px; }
+    .tutorial-arrows .right { left: 92px; top: 43px; }
+
+    .tutorial-swipe {
+      position: absolute;
+      left: 105px;
+      top: 38px;
+      width: 48px;
+      height: 26px;
+      border-top: 2px solid rgba(147, 197, 253, 0.86);
+      border-radius: 50%;
+      transform: rotate(-8deg);
+    }
+
+    .tutorial-swipe::before,
+    .tutorial-swipe::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      width: 10px;
+      height: 10px;
+      border-top: 2px solid rgba(147, 197, 253, 0.86);
+      border-right: 2px solid rgba(147, 197, 253, 0.86);
+    }
+
+    .tutorial-swipe::before {
+      left: 0;
+      transform: rotate(-140deg);
+    }
+
+    .tutorial-swipe::after {
+      right: 0;
+      transform: rotate(40deg);
+    }
+
     .highlight {
       color: #60a5fa;
       font-weight: bold;
@@ -144,6 +296,36 @@
       #ui-layer p {
         font-size: 0.9rem;
       }
+      .opening-tutorial {
+        width: min(620px, 92vw);
+        margin-top: 22px;
+        gap: 12px;
+      }
+      .tutorial-card {
+        min-height: 154px;
+      }
+      .tutorial-device {
+        top: 18px;
+        transform: translateX(-50%) scale(0.82);
+      }
+      .tutorial-label {
+        bottom: 12px;
+        font-size: 0.78rem;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .opening-tutorial {
+        grid-template-columns: 1fr;
+        width: min(340px, 90vw);
+      }
+      .tutorial-card {
+        min-height: 138px;
+      }
+      .tutorial-device {
+        top: 10px;
+        transform: translateX(-50%) scale(0.72);
+      }
     }
   </style>
 
@@ -160,7 +342,31 @@
 
   <div id="ui-layer">
     <h1>リスキリングセンター3</h1>
-    <p id="start-text">画面をクリックして空間に没入する</p>
+    <p id="start-text">タップ（クリック）してゲーム開始</p>
+    <div class="opening-tutorial" aria-hidden="true">
+      <div class="tutorial-card">
+        <div class="tutorial-device">
+          <div class="tutorial-zone left"></div>
+          <div class="tutorial-joystick"></div>
+          <div class="tutorial-arrows">
+            <span class="up">↑</span>
+            <span class="down">↓</span>
+            <span class="left">←</span>
+            <span class="right">→</span>
+          </div>
+        </div>
+        <div class="tutorial-thumb left"></div>
+        <div class="tutorial-label">左手親指でスティック操作</div>
+      </div>
+      <div class="tutorial-card">
+        <div class="tutorial-device">
+          <div class="tutorial-zone right"></div>
+          <div class="tutorial-swipe"></div>
+        </div>
+        <div class="tutorial-thumb right"></div>
+        <div class="tutorial-label">右手親指で視点調整</div>
+      </div>
+    </div>
     <p id="controls-text"
       style="margin-top: 40px; font-size: 1rem; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px;">
       <span class="highlight">W A S D</span> : 移動 &nbsp;|&nbsp;
@@ -184,7 +390,7 @@
         }
 
         if (isTouchDevice) {
-            document.getElementById('start-text').innerHTML = "タップして空間に没入する<br><span style='font-size:0.8rem; color:#aaa;'>(横画面推奨)</span>";
+            document.getElementById('start-text').innerHTML = "タップ（クリック）してゲーム開始<br><span style='font-size:0.8rem; color:#aaa;'>(横画面推奨)</span>";
             document.getElementById('controls-text').innerHTML = "<span class='highlight'>左画面ドラッグ</span> : 移動 &nbsp;|&nbsp; <span class='highlight'>右画面スワイプ</span> : 視点移動";
         }
 
