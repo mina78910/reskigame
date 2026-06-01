@@ -3191,7 +3191,9 @@
                 const elevatorWalkLeft = elevatorHallLeftX + 0.35;
                 const elevatorWalkRight = elevatorHallRightX - 0.35;
                 const elevatorWalkBackZ = elevatorHallBackZ + 0.45;
-                const elevatorWalkFrontZ = elevatorHallFrontZ + 0.25;
+                // エレベーターホール正面の横廊下は Z=14.25 付近まで歩ける見た目なので、
+                // ホール判定に入ったままでも Z=13.25 で押し返さず、横廊下側へ少し進める余白を残す。
+                const elevatorDoorwayFrontZ = crossWalkEndZ - 0.3;
                 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
                 // 判定境界に少し余裕を持たせる。X=-7.91 / Z=14.55 付近は横廊下の突き当たりと
                 // エレベーターホール入口の角が重なるため、厳密な不等号だと数cmの差でどの通路にも属さず、
@@ -3221,13 +3223,13 @@
                     && camera.position.x >= entranceWalkLeft - 0.4 - routeEpsilon
                     && camera.position.x <= entranceWalkRight + 0.55 + routeEpsilon;
                 const inElevatorHall = camera.position.z >= elevatorWalkBackZ - 0.2 - routeEpsilon
-                    && camera.position.z <= elevatorWalkFrontZ + doorwayOverlap
+                    && camera.position.z <= elevatorDoorwayFrontZ + routeEpsilon
                     && camera.position.x >= elevatorWalkLeft - doorwayOverlap
                     && camera.position.x <= elevatorWalkRight + 0.25 + routeEpsilon;
 
                 if (inElevatorHall) {
                     camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
-                    camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorWalkFrontZ);
+                    camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
                 } else if (inCrossCorridor) {
                     camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
                     camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
