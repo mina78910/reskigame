@@ -244,20 +244,21 @@
 
     #coordinate-hud {
       position: absolute;
-      top: 15px;
-      left: 15px;
-      background-color: rgba(0, 0, 0, 0.7);
-      color: #00ffcc;
-      padding: 10px 15px;
-      border-radius: 6px;
+      top: 10px;
+      left: 10px;
+      background-color: rgba(255, 255, 255, 0.38);
+      color: rgba(0, 0, 0, 0.58);
+      padding: 4px 6px;
+      border-radius: 4px;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.25;
       pointer-events: none;
       z-index: 20;
       display: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-      border: 1px solid #00ffcc;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
+      border: 1px solid rgba(0, 0, 0, 0.16);
     }
 
     #joystick-zone {
@@ -367,12 +368,6 @@
         <div class="tutorial-label">右手親指で視点調整</div>
       </div>
     </div>
-    <p id="controls-text"
-      style="margin-top: 40px; font-size: 1rem; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px;">
-      <span class="highlight">W A S D</span> : 移動 &nbsp;|&nbsp;
-      <span class="highlight">Mouse</span> : 視点移動 &nbsp;|&nbsp;
-      <span class="highlight">ESC</span> : ロック解除
-    </p>
   </div>
 
   <script>
@@ -391,7 +386,6 @@
 
         if (isTouchDevice) {
             document.getElementById('start-text').innerHTML = "タップ（クリック）してゲーム開始<br><span style='font-size:0.8rem; color:#aaa;'>(横画面推奨)</span>";
-            document.getElementById('controls-text').innerHTML = "<span class='highlight'>左画面ドラッグ</span> : 移動 &nbsp;|&nbsp; <span class='highlight'>右画面スワイプ</span> : 視点移動";
         }
 
         // ==========================================
