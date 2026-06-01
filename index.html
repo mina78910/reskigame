@@ -56,8 +56,8 @@
     }
 
     #ui-layer h1 {
-      margin: 0 0 10px 0;
-      font-size: 3rem;
+      margin: 0 0 8px 0;
+      font-size: clamp(2.2rem, 5vw, 2.75rem);
       letter-spacing: 4px;
       text-transform: uppercase;
       text-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
@@ -70,8 +70,8 @@
     }
 
     .opening-tutorial {
-      width: min(760px, 88vw);
-      margin: 28px 0 8px;
+      width: min(720px, 88vw);
+      margin: 22px 0 8px;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 20px;
@@ -80,7 +80,7 @@
     }
 
     .tutorial-card {
-      min-height: 178px;
+      min-height: 158px;
       position: relative;
       overflow: hidden;
       border: 1px solid rgba(255, 255, 255, 0.16);
@@ -94,7 +94,7 @@
     .tutorial-label {
       position: absolute;
       left: 50%;
-      bottom: 16px;
+      bottom: 12px;
       transform: translateX(-50%);
       width: 90%;
       color: rgba(226, 232, 240, 0.92);
@@ -106,9 +106,9 @@
     .tutorial-device {
       position: absolute;
       left: 50%;
-      top: 24px;
-      width: 180px;
-      height: 96px;
+      top: 18px;
+      width: 168px;
+      height: 90px;
       transform: translateX(-50%);
       border: 2px solid rgba(226, 232, 240, 0.42);
       border-radius: 22px;
@@ -224,12 +224,12 @@
     .opening-notes {
       position: absolute;
       left: 50%;
-      bottom: max(18px, env(safe-area-inset-bottom));
+      bottom: max(16px, env(safe-area-inset-bottom));
       transform: translateX(-50%);
       width: min(760px, 88vw);
       color: rgba(226, 232, 240, 0.82);
       font-size: 0.92rem;
-      line-height: 1.7;
+      line-height: 1.55;
       letter-spacing: 0.02em;
       pointer-events: none;
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
@@ -319,11 +319,11 @@
       }
       .opening-tutorial {
         width: min(620px, 92vw);
-        margin-top: 22px;
+        margin-top: 16px;
         gap: 12px;
       }
       .tutorial-card {
-        min-height: 154px;
+        min-height: 138px;
       }
       .tutorial-device {
         top: 18px;
@@ -344,10 +344,11 @@
     @media (max-width: 560px) {
       .opening-tutorial {
         grid-template-columns: 1fr;
-        width: min(340px, 90vw);
+        width: min(330px, 90vw);
+        margin-top: 14px;
       }
       .tutorial-card {
-        min-height: 138px;
+        min-height: 118px;
       }
       .tutorial-device {
         top: 10px;
@@ -3472,15 +3473,18 @@
                     && camera.position.x <= elevatorWalkRight + 0.25 + routeEpsilon;
                 const inEntranceCrossTransition = inEntranceArea && camera.position.x < crossWalkLeft;
 
-                if (inElevatorHall) {
-                    camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
-                    camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
-                } else if (inEntranceCrossTransition) {
+                if (inEntranceCrossTransition) {
                     camera.position.x = clamp(camera.position.x, entranceWalkLeft, entranceWalkRight);
                     if (camera.position.z > crossWalkEndZ) camera.position.z = crossWalkEndZ;
                 } else if (inCrossCorridor) {
+                    // エレベーターホール入口と横廊下が重なる範囲では横廊下を優先する。
+                    // X=-7.65 / Z=13.48 付近でホール側の左端に先にクランプされると、
+                    // 見た目は横廊下内なのに -X 方向へ進めなくなるため。
                     camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
                     camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
+                } else if (inElevatorHall) {
+                    camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
+                    camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
                 } else if (inCorridor1) {
                     camera.position.x = clamp(camera.position.x, corridorWalkLeft, corridorWalkRight);
                     if (camera.position.z > corridorWalkEndZ) camera.position.z = corridorWalkEndZ;
