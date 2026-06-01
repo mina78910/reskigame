@@ -3158,10 +3158,19 @@
                 const boundZMin = -roomDepth / 2 + 1.8; 
                 
                 if (camera.position.x < -23.5) {
-                    if (camera.position.z > -0.5) camera.position.z = -0.5;
-                    if (camera.position.z < -6.5) camera.position.z = -6.5;
-                    
-                    boundXMin = -34.0;
+                    const sideMeetingRoomWalkLeft = -roomWidth / 2 - 2.65;
+                    const sideMeetingRoomWalkEndZ = sideWallDoorEnd + 0.55;
+                    const inSideMeetingRoomApproach = camera.position.x >= sideMeetingRoomWalkLeft
+                        && camera.position.z > -0.5;
+
+                    if (inSideMeetingRoomApproach) {
+                        if (camera.position.z > sideMeetingRoomWalkEndZ) camera.position.z = sideMeetingRoomWalkEndZ;
+                        boundXMin = sideMeetingRoomWalkLeft;
+                    } else {
+                        if (camera.position.z > -0.5) camera.position.z = -0.5;
+                        if (camera.position.z < -6.5) camera.position.z = -6.5;
+                        boundXMin = -34.0;
+                    }
                 }
 
                 if(camera.position.x < boundXMin) camera.position.x = boundXMin;
@@ -3226,10 +3235,14 @@
                     && camera.position.z <= elevatorDoorwayFrontZ + routeEpsilon
                     && camera.position.x >= elevatorWalkLeft - doorwayOverlap
                     && camera.position.x <= elevatorWalkRight + 0.25 + routeEpsilon;
+                const inEntranceCrossTransition = inEntranceArea && camera.position.x < crossWalkLeft;
 
                 if (inElevatorHall) {
                     camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
                     camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
+                } else if (inEntranceCrossTransition) {
+                    camera.position.x = clamp(camera.position.x, entranceWalkLeft, entranceWalkRight);
+                    if (camera.position.z > crossWalkEndZ) camera.position.z = crossWalkEndZ;
                 } else if (inCrossCorridor) {
                     camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
                     camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
