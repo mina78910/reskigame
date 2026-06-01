@@ -1583,32 +1583,33 @@
 
         const doorGroup = new THREE.Group();
         const doorColorMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.4 });
-        const doorWidthDouble = 1.4;
-        
-        const openDoorAngle = Math.PI * 0.37;
-        const doorL = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorL.position.set(alcoveStart + doorWidthDouble / 2 - 0.08, alcoveHeight / 2, corridorDoorZ + 0.42);
-        doorL.rotation.y = -openDoorAngle;
-        doorL.castShadow = true;
-        doorGroup.add(doorL);
-        
-        const doorR = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, 0.05), doorColorMat);
-        doorR.position.set(alcoveEnd - doorWidthDouble / 2 + 0.08, alcoveHeight / 2, corridorDoorZ + 0.42);
-        doorR.rotation.y = openDoorAngle;
-        doorR.castShadow = true;
-        doorGroup.add(doorR);
+        const doorWidthDouble = 1.36;
+        const doorThickness = 0.05;
+        const doorHingeZ = corridorDoorZ;
+        const openDoorAngle = Math.PI * 0.48;
+
+        function createOpenDoubleDoorLeaf(hingeX, swingDirection) {
+            const hingeGroup = new THREE.Group();
+            hingeGroup.position.set(hingeX, 0, doorHingeZ);
+            hingeGroup.rotation.y = swingDirection * openDoorAngle;
+
+            const door = new THREE.Mesh(new THREE.BoxGeometry(doorWidthDouble, alcoveHeight, doorThickness), doorColorMat);
+            door.position.set(swingDirection * doorWidthDouble / 2, alcoveHeight / 2, 0);
+            door.castShadow = true;
+            hingeGroup.add(door);
+
+            const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
+            handle.position.set(swingDirection * (doorWidthDouble - 0.22), alcoveHeight / 2, -doorThickness / 2 - 0.035);
+            hingeGroup.add(handle);
+
+            return hingeGroup;
+        }
 
         // --- ★ご指摘の取っ手を復元 ---
         const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.9, roughness: 0.2 });
-        const handleL = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleL.rotation.y = -openDoorAngle;
-        handleL.position.set(alcoveCenterX - 0.28, alcoveHeight / 2, corridorDoorZ + 0.52);
-        doorGroup.add(handleL);
-        
-        const handleR = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.4), handleMat);
-        handleR.rotation.y = openDoorAngle;
-        handleR.position.set(alcoveCenterX + 0.28, alcoveHeight / 2, corridorDoorZ + 0.52);
-        doorGroup.add(handleR);
+        // 中央の観音開きドアは、左右の丁番を基点に Z マイナス方向へ開け放つ。
+        doorGroup.add(createOpenDoubleDoorLeaf(alcoveStart + 0.04, 1));
+        doorGroup.add(createOpenDoubleDoorLeaf(alcoveEnd - 0.04, -1));
 
         scene.add(doorGroup);
 
