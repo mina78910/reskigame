@@ -1201,6 +1201,19 @@
         const crossCorridorDepth = corridorEndZ - corridorTurnStartZ;
         const crossCorridorCenterZ = corridorTurnStartZ + crossCorridorDepth / 2;
 
+        const elevatorConfig = Object.freeze({
+            centers: [-5.0, 0.0],
+            width: 2.15,
+            depth: 2.0,
+            rearZ: corridorTurnStartZ - 2.0,
+            frontZ: corridorTurnStartZ,
+            height: roomHeight,
+            doorWidth: 1.22,
+            doorHeight: 2.65,
+            cutoutStartX: -8.0,
+            cutoutEndX: 2.0
+        });
+
         function createSharedCarpetPatch(width, depth, centerX, centerZ, yOffset = 0.007) {
             const patchTex = carpetTex.clone();
             patchTex.needsUpdate = true;
@@ -1468,11 +1481,120 @@
 
         // 廊下2：突き当たり手前で横に折れ、既存玄関へ接続する周回ルート。
         createSharedCarpetPatch(crossCorridorWidth, crossCorridorDepth, crossCorridorCenterX, crossCorridorCenterZ, 0.008);
-        createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
-        createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
+        // Z=13付近の壁は、X=-8〜2をエレベーター乗り場として開口する。
+        [
+            [crossCorridorMinX, elevatorConfig.cutoutStartX],
+            [elevatorConfig.cutoutEndX, corridorLeftX],
+            [corridorRightX, crossCorridorMaxX]
+        ].forEach(([startX, endX]) => {
+            const wallWidth = endX - startX;
+            if (wallWidth > 0.01) {
+                createWall(wallWidth, corridorHeight, 0.2, startX + wallWidth / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
+            }
+        });
         createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
         createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
         createWall(0.2, corridorHeight, crossCorridorDepth, crossCorridorMaxX + 0.1, corridorHeight / 2, crossCorridorCenterZ, corridorWallColor);
+
+        function createElevatorCab(centerX, label) {
+            const shaftWidth = elevatorConfig.width;
+            const shaftDepth = elevatorConfig.depth;
+            const shaftHeight = elevatorConfig.height;
+            const shaftCenterZ = elevatorConfig.rearZ + shaftDepth / 2;
+            const halfWidth = shaftWidth / 2;
+            const rearZ = elevatorConfig.rearZ;
+            const frontZ = elevatorConfig.frontZ;
+            const sideMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c8, roughness: 0.46, metalness: 0.18 });
+            const rearMat = new THREE.MeshStandardMaterial({ color: 0x87919c, roughness: 0.5, metalness: 0.28 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x3f4650, roughness: 0.62, metalness: 0.18 });
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xd9dde2, roughness: 0.26, metalness: 0.62 });
+            const darkMat = new THREE.MeshStandardMaterial({ color: 0x202936, roughness: 0.5, metalness: 0.35 });
+            const accentMat = new THREE.MeshStandardMaterial({ color: 0x2f80ed, roughness: 0.32, metalness: 0.2, emissive: 0x082d62, emissiveIntensity: 0.25 });
+
+            const floorPanel = new THREE.Mesh(new THREE.BoxGeometry(shaftWidth, 0.08, shaftDepth), floorMat);
+            floorPanel.position.set(centerX, 0.04, shaftCenterZ);
+            floorPanel.receiveShadow = true;
+            scene.add(floorPanel);
+
+            const rearPanel = new THREE.Mesh(new THREE.BoxGeometry(shaftWidth, shaftHeight, 0.12), rearMat);
+            rearPanel.position.set(centerX, shaftHeight / 2, rearZ + 0.06);
+            rearPanel.castShadow = true;
+            rearPanel.receiveShadow = true;
+            scene.add(rearPanel);
+
+            [-1, 1].forEach((side) => {
+                const panel = new THREE.Mesh(new THREE.BoxGeometry(0.12, shaftHeight, shaftDepth), sideMat);
+                panel.position.set(centerX + side * (halfWidth - 0.06), shaftHeight / 2, shaftCenterZ);
+                panel.castShadow = true;
+                panel.receiveShadow = true;
+                scene.add(panel);
+            });
+
+            const ceiling = new THREE.Mesh(new THREE.BoxGeometry(shaftWidth, 0.12, shaftDepth), darkMat);
+            ceiling.position.set(centerX, shaftHeight - 0.06, shaftCenterZ);
+            ceiling.castShadow = true;
+            scene.add(ceiling);
+
+            const doorY = elevatorConfig.doorHeight / 2;
+            const sideFrameWidth = (shaftWidth - elevatorConfig.doorWidth) / 2;
+            [-1, 1].forEach((side) => {
+                const sideFrame = new THREE.Mesh(new THREE.BoxGeometry(sideFrameWidth, elevatorConfig.doorHeight, 0.12), darkMat);
+                sideFrame.position.set(centerX + side * (elevatorConfig.doorWidth / 2 + sideFrameWidth / 2), doorY, frontZ - 0.06);
+                sideFrame.castShadow = true;
+                scene.add(sideFrame);
+            });
+
+            const header = new THREE.Mesh(new THREE.BoxGeometry(shaftWidth, shaftHeight - elevatorConfig.doorHeight, 0.12), darkMat);
+            header.position.set(centerX, elevatorConfig.doorHeight + (shaftHeight - elevatorConfig.doorHeight) / 2, frontZ - 0.06);
+            header.castShadow = true;
+            scene.add(header);
+
+            [-1, 1].forEach((side) => {
+                const door = new THREE.Mesh(new THREE.BoxGeometry(elevatorConfig.doorWidth / 2 - 0.018, elevatorConfig.doorHeight - 0.18, 0.055), doorMat);
+                door.position.set(centerX + side * (elevatorConfig.doorWidth / 4), (elevatorConfig.doorHeight - 0.18) / 2 + 0.08, frontZ + 0.015);
+                door.castShadow = true;
+                door.receiveShadow = true;
+                scene.add(door);
+            });
+
+            const seam = new THREE.Mesh(new THREE.BoxGeometry(0.018, elevatorConfig.doorHeight - 0.22, 0.065), darkMat);
+            seam.position.set(centerX, (elevatorConfig.doorHeight - 0.22) / 2 + 0.08, frontZ + 0.05);
+            scene.add(seam);
+
+            const sign = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.22, 0.04), accentMat);
+            sign.position.set(centerX, elevatorConfig.doorHeight + 0.28, frontZ + 0.06);
+            scene.add(sign);
+
+            const callButton = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.03, 24), accentMat);
+            callButton.rotation.x = Math.PI / 2;
+            callButton.position.set(centerX + halfWidth - 0.28, 1.24, frontZ + 0.07);
+            scene.add(callButton);
+
+            const labelSpriteCanvas = document.createElement('canvas');
+            labelSpriteCanvas.width = 256;
+            labelSpriteCanvas.height = 128;
+            const ctx = labelSpriteCanvas.getContext('2d');
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+            ctx.fillRect(0, 0, 256, 128);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 52px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, 128, 66);
+            const labelTexture = new THREE.CanvasTexture(labelSpriteCanvas);
+            const labelPanel = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.62, 0.31),
+                new THREE.MeshBasicMaterial({ map: labelTexture, transparent: true })
+            );
+            labelPanel.position.set(centerX, elevatorConfig.doorHeight + 0.28, frontZ + 0.085);
+            scene.add(labelPanel);
+
+            const light = new THREE.PointLight(0xeaf6ff, 0.32, 3.8);
+            light.position.set(centerX, shaftHeight - 0.35, shaftCenterZ);
+            scene.add(light);
+        }
+
+        elevatorConfig.centers.forEach((centerX, index) => createElevatorCab(centerX, `EV-${index + 1}`));
 
         const corridorCeilingMat = new THREE.MeshStandardMaterial({ color: 0xf2f1ec, roughness: 0.9, emissive: 0x080807 });
         const corridorCeiling1 = new THREE.Mesh(new THREE.PlaneGeometry(corridorWidth, corridorEndZ - corridorDoorZ), corridorCeilingMat);
@@ -2974,8 +3096,22 @@
                     && camera.position.z < crossWalkEndZ + 0.1
                     && camera.position.x > entranceWalkLeft - 0.4
                     && camera.position.x < entranceWalkRight + 0.55;
+                const elevatorWalkDepthInset = 0.32;
+                const elevatorWalkHalfWidth = elevatorConfig.width / 2 - 0.24;
+                const activeElevatorCenter = elevatorConfig.centers.find((centerX) =>
+                    camera.position.x > centerX - elevatorWalkHalfWidth
+                    && camera.position.x < centerX + elevatorWalkHalfWidth
+                    && camera.position.z > elevatorConfig.rearZ + elevatorWalkDepthInset
+                    && camera.position.z < elevatorConfig.frontZ + 0.42
+                );
+                const inElevatorCab = activeElevatorCenter !== undefined;
 
-                if (inCrossCorridor) {
+                if (inElevatorCab) {
+                    if (camera.position.x < activeElevatorCenter - elevatorWalkHalfWidth) camera.position.x = activeElevatorCenter - elevatorWalkHalfWidth;
+                    if (camera.position.x > activeElevatorCenter + elevatorWalkHalfWidth) camera.position.x = activeElevatorCenter + elevatorWalkHalfWidth;
+                    if (camera.position.z < elevatorConfig.rearZ + elevatorWalkDepthInset) camera.position.z = elevatorConfig.rearZ + elevatorWalkDepthInset;
+                    if (camera.position.z > elevatorConfig.frontZ + 0.42) camera.position.z = elevatorConfig.frontZ + 0.42;
+                } else if (inCrossCorridor) {
                     if (camera.position.x < crossWalkLeft) camera.position.x = crossWalkLeft;
                     if (camera.position.x > crossWalkRight) camera.position.x = crossWalkRight;
                     if (camera.position.z < crossWalkStartZ) camera.position.z = crossWalkStartZ;
