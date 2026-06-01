@@ -1200,6 +1200,14 @@
         const crossCorridorWidth = crossCorridorMaxX - crossCorridorMinX;
         const crossCorridorDepth = corridorEndZ - corridorTurnStartZ;
         const crossCorridorCenterZ = corridorTurnStartZ + crossCorridorDepth / 2;
+        const corridorFloorExtensionMinX = -8.0;
+        const corridorFloorExtensionMaxX = 2.0;
+        const corridorFloorExtensionStartZ = 8.5;
+        const corridorFloorExtensionEndZ = corridorTurnStartZ;
+        const corridorFloorExtensionWidth = corridorFloorExtensionMaxX - corridorFloorExtensionMinX;
+        const corridorFloorExtensionDepth = corridorFloorExtensionEndZ - corridorFloorExtensionStartZ;
+        const corridorFloorExtensionCenterX = (corridorFloorExtensionMinX + corridorFloorExtensionMaxX) / 2;
+        const corridorFloorExtensionCenterZ = corridorFloorExtensionStartZ + corridorFloorExtensionDepth / 2;
 
         function createSharedCarpetPatch(width, depth, centerX, centerZ, yOffset = 0.007) {
             const patchTex = carpetTex.clone();
@@ -1466,9 +1474,13 @@
         createWall(0.2, corridorHeight, corridorTurnStartZ - corridorDoorZ, corridorRightX + 0.1, corridorHeight / 2, (corridorDoorZ + corridorTurnStartZ) / 2, corridorWallColor);
         createWall(corridorWidth + 0.4, corridorHeight, 0.2, corridorCenterX, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
 
+        // X=-8〜2 の Z=13 手前にある廊下壁を開け、Z=8.5 付近まで床を伸ばす。
+        createSharedCarpetPatch(corridorFloorExtensionWidth, corridorFloorExtensionDepth, corridorFloorExtensionCenterX, corridorFloorExtensionCenterZ, 0.009);
+
         // 廊下2：突き当たり手前で横に折れ、既存玄関へ接続する周回ルート。
         createSharedCarpetPatch(crossCorridorWidth, crossCorridorDepth, crossCorridorCenterX, crossCorridorCenterZ, 0.008);
-        createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
+        createWall(corridorFloorExtensionMinX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorFloorExtensionMinX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
+        createWall(corridorLeftX - corridorFloorExtensionMaxX, corridorHeight, 0.2, (corridorFloorExtensionMaxX + corridorLeftX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
         createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorTurnStartZ - 0.1, corridorWallColor);
         createWall(corridorLeftX - crossCorridorMinX, corridorHeight, 0.2, (crossCorridorMinX + corridorLeftX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
         createWall(crossCorridorMaxX - corridorRightX, corridorHeight, 0.2, (corridorRightX + crossCorridorMaxX) / 2, corridorHeight / 2, corridorEndZ + 0.1, corridorWallColor);
@@ -1480,6 +1492,11 @@
         corridorCeiling1.position.set(corridorCenterX, corridorHeight - 0.04, (corridorDoorZ + corridorEndZ) / 2);
         corridorCeiling1.receiveShadow = true;
         scene.add(corridorCeiling1);
+        const corridorCeilingExtension = new THREE.Mesh(new THREE.PlaneGeometry(corridorFloorExtensionWidth, corridorFloorExtensionDepth), corridorCeilingMat);
+        corridorCeilingExtension.rotation.x = Math.PI / 2;
+        corridorCeilingExtension.position.set(corridorFloorExtensionCenterX, corridorHeight - 0.038, corridorFloorExtensionCenterZ);
+        corridorCeilingExtension.receiveShadow = true;
+        scene.add(corridorCeilingExtension);
         const corridorCeiling2 = new THREE.Mesh(new THREE.PlaneGeometry(crossCorridorWidth, crossCorridorDepth), corridorCeilingMat);
         corridorCeiling2.rotation.x = Math.PI / 2;
         corridorCeiling2.position.set(crossCorridorCenterX, corridorHeight - 0.035, crossCorridorCenterZ);
@@ -2970,12 +2987,21 @@
                     && camera.position.x < corridorWalkRight + 0.2
                     && camera.position.z > corridorWalkStartZ
                     && camera.position.z < corridorWalkEndZ + 0.2;
+                const inCorridorFloorExtension = camera.position.x > corridorFloorExtensionMinX - 0.25
+                    && camera.position.x < corridorFloorExtensionMaxX + 0.25
+                    && camera.position.z > corridorFloorExtensionStartZ - 0.15
+                    && camera.position.z < corridorFloorExtensionEndZ + 0.2;
                 const inEntranceArea = camera.position.z > entranceStartZ + 0.35
                     && camera.position.z < crossWalkEndZ + 0.1
                     && camera.position.x > entranceWalkLeft - 0.4
                     && camera.position.x < entranceWalkRight + 0.55;
 
-                if (inCrossCorridor) {
+                if (inCorridorFloorExtension) {
+                    if (camera.position.x < corridorFloorExtensionMinX) camera.position.x = corridorFloorExtensionMinX;
+                    if (camera.position.x > corridorFloorExtensionMaxX) camera.position.x = corridorFloorExtensionMaxX;
+                    if (camera.position.z < corridorFloorExtensionStartZ) camera.position.z = corridorFloorExtensionStartZ;
+                    if (camera.position.z > corridorFloorExtensionEndZ) camera.position.z = corridorFloorExtensionEndZ;
+                } else if (inCrossCorridor) {
                     if (camera.position.x < crossWalkLeft) camera.position.x = crossWalkLeft;
                     if (camera.position.x > crossWalkRight) camera.position.x = crossWalkRight;
                     if (camera.position.z < crossWalkStartZ) camera.position.z = crossWalkStartZ;
