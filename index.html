@@ -2452,26 +2452,34 @@
             }
             for (let i = 0; i < units; i++) {
                 const zOffset = (i * unitLength) - (totalLength / 2) + (unitLength / 2);
-                const monitor = createMonitorModel();
-                monitor.position.set(0, 0.72, zOffset);
-                rowGroup.add(monitor);
+                const faceToFaceStagger = 0.22;
+                const rightSeatZ = zOffset + faceToFaceStagger;
+                const leftSeatZ = zOffset - faceToFaceStagger;
+
+                const monitorR = createMonitorModel();
+                monitorR.position.set(0.28, 0.72, rightSeatZ);
+                rowGroup.add(monitorR);
+
+                const monitorL = createMonitorModel();
+                monitorL.position.set(-0.28, 0.72, leftSeatZ);
+                rowGroup.add(monitorL);
                 
                 const chairR = createDeskChairModel(getNextChairColor());
-                chairR.position.set(0.8, 0, zOffset);
+                chairR.position.set(0.8, 0, rightSeatZ);
                 chairR.rotation.y = -Math.PI / 2;
                 rowGroup.add(chairR);
                 
                 const laptopR = createLaptopModel();
-                laptopR.position.set(0.35, 0.73, zOffset);
+                laptopR.position.set(0.35, 0.73, rightSeatZ);
                 rowGroup.add(laptopR);
                 
                 const chairL = createDeskChairModel(getNextChairColor());
-                chairL.position.set(-0.8, 0, zOffset);
+                chairL.position.set(-0.8, 0, leftSeatZ);
                 chairL.rotation.y = Math.PI / 2;
                 rowGroup.add(chairL);
                 
                 const laptopL = createLaptopModel();
-                laptopL.position.set(-0.35, 0.73, zOffset);
+                laptopL.position.set(-0.35, 0.73, leftSeatZ);
                 rowGroup.add(laptopL);
             }
             rowGroup.position.set(desk_x, 0, centerZ);
