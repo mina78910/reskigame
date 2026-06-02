@@ -2452,27 +2452,29 @@
             }
             for (let i = 0; i < units; i++) {
                 const zOffset = (i * unitLength) - (totalLength / 2) + (unitLength / 2);
-                const monitor = createMonitorModel();
-                monitor.position.set(0, 0.72, zOffset);
-                rowGroup.add(monitor);
+                const monitorSideOffset = 0.24;
+                const monitorDepthOffset = 0.24;
+                const monitorAngle = Math.PI / 12;
                 
                 const chairR = createDeskChairModel(getNextChairColor());
                 chairR.position.set(0.8, 0, zOffset);
                 chairR.rotation.y = -Math.PI / 2;
                 rowGroup.add(chairR);
                 
-                const laptopR = createLaptopModel();
-                laptopR.position.set(0.35, 0.73, zOffset);
-                rowGroup.add(laptopR);
+                const monitorR = createMonitorModel();
+                monitorR.position.set(0.28, 0.72, zOffset - monitorSideOffset);
+                monitorR.rotation.y = -monitorAngle;
+                rowGroup.add(monitorR);
                 
                 const chairL = createDeskChairModel(getNextChairColor());
                 chairL.position.set(-0.8, 0, zOffset);
                 chairL.rotation.y = Math.PI / 2;
                 rowGroup.add(chairL);
                 
-                const laptopL = createLaptopModel();
-                laptopL.position.set(-0.35, 0.73, zOffset);
-                rowGroup.add(laptopL);
+                const monitorL = createMonitorModel();
+                monitorL.position.set(-0.28, 0.72, zOffset + monitorDepthOffset);
+                monitorL.rotation.y = monitorAngle;
+                rowGroup.add(monitorL);
             }
             rowGroup.position.set(desk_x, 0, centerZ);
             scene.add(rowGroup);
