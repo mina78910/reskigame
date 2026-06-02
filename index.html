@@ -3495,8 +3495,16 @@
                     && camera.position.x >= elevatorWalkLeft - doorwayOverlap
                     && camera.position.x <= elevatorWalkRight + 0.25 + routeEpsilon;
                 const inEntranceCrossTransition = inEntranceArea && camera.position.x < crossWalkLeft;
+                // エレベーターホール入口は横廊下と判定が重なる。X=-7.82 / Z=13.50 付近で
+                // 左へ抜けたいときはホール左端へ戻すのではなく、横廊下として扱って -X 方向へ進めるようにする。
+                const leavingElevatorHallToCrossCorridor = inCrossCorridor
+                    && camera.position.z >= crossWalkStartZ
+                    && camera.position.x < elevatorWalkLeft;
 
-                if (inElevatorHall) {
+                if (leavingElevatorHallToCrossCorridor) {
+                    camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
+                    camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
+                } else if (inElevatorHall) {
                     camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
                     camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
                 } else if (inEntranceCrossTransition) {
