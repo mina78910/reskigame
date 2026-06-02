@@ -2429,6 +2429,137 @@
             return laptop;
         }
 
+        // ==========================================
+        // 人物モデル: 20人分の利用者を座席・廊下に配置
+        // ==========================================
+        const HUMAN_MATERIALS = {
+            skin: [0xf2c7a7, 0xe1ad83, 0xc9855f, 0x8f5d3f, 0xffd7bd],
+            hair: [0x1f1a17, 0x3b2a1e, 0x5b4636, 0x101820, 0x6b4f3a],
+            tops: [0x2563eb, 0xdb2777, 0x16a34a, 0xf97316, 0x7c3aed, 0x0891b2, 0xb91c1c, 0x334155],
+            bottoms: [0x1f2937, 0x334155, 0x0f172a, 0x3f3f46, 0x1e3a8a]
+        };
+
+        function makeHumanMat(palette, index, roughness = 0.78) {
+            return new THREE.MeshStandardMaterial({ color: palette[index % palette.length], roughness });
+        }
+
+        function addLimb(group, start, end, radius, material) {
+            const direction = new THREE.Vector3().subVectors(end, start);
+            const length = direction.length();
+            const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), material);
+            limb.position.copy(start).add(end).multiplyScalar(0.5);
+            limb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+            limb.castShadow = true;
+            group.add(limb);
+            return limb;
+        }
+
+        function createHumanModel({ pose = 'seated', variant = 0, gesture = 'laptop' } = {}) {
+            const group = new THREE.Group();
+            const skinMat = makeHumanMat(HUMAN_MATERIALS.skin, variant, 0.72);
+            const hairMat = makeHumanMat(HUMAN_MATERIALS.hair, variant, 0.85);
+            const topMat = makeHumanMat(HUMAN_MATERIALS.tops, variant, 0.74);
+            const bottomMat = makeHumanMat(HUMAN_MATERIALS.bottoms, variant, 0.82);
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.7 });
+
+            const torsoY = pose === 'standing' ? 1.05 : 0.88;
+            const headY = pose === 'standing' ? 1.52 : 1.33;
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.28, 0.58, 16), topMat);
+            torso.position.set(0, torsoY, 0);
+            torso.scale.x = 0.86;
+            torso.rotation.x = pose === 'seated' ? -0.08 : 0;
+            torso.castShadow = true;
+            group.add(torso);
+
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.09, 12), skinMat);
+            neck.position.set(0, headY - 0.2, 0);
+            neck.castShadow = true;
+            group.add(neck);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 16), skinMat);
+            head.position.set(0, headY, 0.015);
+            head.scale.set(0.92, 1.08, 0.9);
+            head.castShadow = true;
+            group.add(head);
+
+            const hair = new THREE.Mesh(new THREE.SphereGeometry(0.185, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), hairMat);
+            hair.position.set(0, headY + 0.03, 0.005);
+            hair.rotation.x = -0.12;
+            hair.castShadow = true;
+            group.add(hair);
+
+            const leftEye = new THREE.Mesh(new THREE.SphereGeometry(0.014, 8, 8), shoeMat);
+            leftEye.position.set(-0.055, headY + 0.02, 0.155);
+            group.add(leftEye);
+            const rightEye = leftEye.clone();
+            rightEye.position.x = 0.055;
+            group.add(rightEye);
+
+            const shoulderY = torsoY + 0.22;
+            const hipsY = pose === 'standing' ? 0.78 : 0.54;
+            const handTargetZ = gesture === 'chat' ? 0.12 : 0.33;
+            const handY = pose === 'standing' ? 0.94 : 0.72;
+            addLimb(group, new THREE.Vector3(-0.22, shoulderY, 0.02), new THREE.Vector3(-0.35, handY, handTargetZ), 0.045, topMat);
+            addLimb(group, new THREE.Vector3(0.22, shoulderY, 0.02), new THREE.Vector3(0.35, handY + (gesture === 'phone' ? 0.18 : 0), handTargetZ), 0.045, topMat);
+            addLimb(group, new THREE.Vector3(-0.35, handY, handTargetZ), new THREE.Vector3(-0.39, handY - 0.03, handTargetZ + 0.04), 0.034, skinMat);
+            addLimb(group, new THREE.Vector3(0.35, handY + (gesture === 'phone' ? 0.18 : 0), handTargetZ), new THREE.Vector3(0.39, handY + (gesture === 'phone' ? 0.17 : -0.03), handTargetZ + 0.04), 0.034, skinMat);
+
+            if (pose === 'standing') {
+                addLimb(group, new THREE.Vector3(-0.12, hipsY, 0), new THREE.Vector3(-0.14, 0.08, 0.04), 0.065, bottomMat);
+                addLimb(group, new THREE.Vector3(0.12, hipsY, 0), new THREE.Vector3(0.15, 0.08, -0.03), 0.065, bottomMat);
+                addLimb(group, new THREE.Vector3(-0.14, 0.06, 0.08), new THREE.Vector3(-0.14, 0.035, 0.25), 0.045, shoeMat);
+                addLimb(group, new THREE.Vector3(0.15, 0.06, 0.01), new THREE.Vector3(0.15, 0.035, 0.18), 0.045, shoeMat);
+            } else {
+                addLimb(group, new THREE.Vector3(-0.12, hipsY, 0), new THREE.Vector3(-0.19, 0.45, 0.38), 0.065, bottomMat);
+                addLimb(group, new THREE.Vector3(0.12, hipsY, 0), new THREE.Vector3(0.19, 0.45, 0.38), 0.065, bottomMat);
+                addLimb(group, new THREE.Vector3(-0.19, 0.45, 0.38), new THREE.Vector3(-0.2, 0.08, 0.55), 0.06, bottomMat);
+                addLimb(group, new THREE.Vector3(0.19, 0.45, 0.38), new THREE.Vector3(0.2, 0.08, 0.55), 0.06, bottomMat);
+                addLimb(group, new THREE.Vector3(-0.2, 0.07, 0.55), new THREE.Vector3(-0.2, 0.045, 0.72), 0.045, shoeMat);
+                addLimb(group, new THREE.Vector3(0.2, 0.07, 0.55), new THREE.Vector3(0.2, 0.045, 0.72), 0.045, shoeMat);
+            }
+
+            if (gesture === 'phone') {
+                const phone = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.11, 0.012), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35 }));
+                phone.position.set(0.42, handY + 0.19, handTargetZ + 0.06);
+                phone.rotation.set(0.2, -0.15, 0.12);
+                group.add(phone);
+            }
+
+            return group;
+        }
+
+        function placeHuman(x, z, rotationY, options = {}) {
+            const human = createHumanModel(options);
+            human.position.set(x, 0, z);
+            human.rotation.y = rotationY;
+            scene.add(human);
+            return human;
+        }
+
+        function createCorridorBench(x, z, rotationY = 0) {
+            const bench = new THREE.Group();
+            const benchMat = new THREE.MeshStandardMaterial({ color: 0x8b735f, roughness: 0.64 });
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x3f3f46, roughness: 0.5, metalness: 0.25 });
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.08, 0.42), benchMat);
+            seat.position.y = 0.42;
+            setMeshShadow(seat, true);
+            bench.add(seat);
+            const back = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.38, 0.06), benchMat);
+            back.position.set(0, 0.66, -0.24);
+            setMeshShadow(back, true);
+            bench.add(back);
+            [-0.52, 0.52].forEach((lx) => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.06), metalMat);
+                leg.position.set(lx, 0.21, 0.12);
+                setMeshShadow(leg);
+                bench.add(leg);
+            });
+            bench.position.set(x, 0, z);
+            bench.rotation.y = rotationY;
+            scene.add(bench);
+            return bench;
+        }
+
         function createDeskRow(desk_x, centerZ, units) {
             const rowGroup = new THREE.Group();
             const unitLength = 1.4; 
@@ -2547,6 +2678,44 @@
         const mossWallTeleconferenceBoothDepth = 1.18;
         const mossWallTeleconferenceBoothZ = backWallZ + 0.1 + mossWallTeleconferenceBoothDepth / 2;
         createTeleconferenceBox(20 + deskOffset, mossWallTeleconferenceBoothZ, Math.PI);
+
+        // 合計20人を配置。デスク・フリー席・廊下ベンチに人影を分散させ、稼働中のセンターらしさを出す。
+        const deskOccupants = [
+            { x: -21.6, z: -1.88, side: 1, gesture: 'laptop' },
+            { x: -18.0, z: 0.48, side: -1, gesture: 'chat' },
+            { x: -14.4, z: 2.32, side: 1, gesture: 'laptop' },
+            { x: -10.8, z: -0.92, side: -1, gesture: 'phone' },
+            { x: -7.2, z: 0.92, side: 1, gesture: 'laptop' },
+            { x: -3.6, z: -2.32, side: -1, gesture: 'chat' },
+            { x: 0.0, z: -0.48, side: 1, gesture: 'laptop' },
+            { x: 10.8, z: 1.88, side: -1, gesture: 'phone' },
+            { x: 14.4, z: -1.88, side: 1, gesture: 'laptop' },
+            { x: 18.0, z: 0.48, side: -1, gesture: 'chat' }
+        ];
+        deskOccupants.forEach((person, index) => {
+            const seatX = person.x + (person.side > 0 ? 0.8 : -0.8);
+            const yaw = person.side > 0 ? -Math.PI / 2 : Math.PI / 2;
+            placeHuman(seatX, person.z, yaw, { pose: 'seated', variant: index, gesture: person.gesture });
+        });
+
+        const freeSeatOccupants = [
+            { x: 5.4, z: -1.72, yaw: 0.82, gesture: 'chat' },
+            { x: 3.65, z: 0.62, yaw: 2.35, gesture: 'phone' },
+            { x: 7.1, z: -0.62, yaw: -0.72, gesture: 'chat' },
+            { x: 5.4, z: 3.55, yaw: Math.PI + 0.12, gesture: 'laptop' },
+            { x: -27.9, z: -2.27, yaw: 0.04, gesture: 'chat' },
+            { x: -32.2, z: -6.7, yaw: Math.PI - 0.02, gesture: 'phone' }
+        ];
+        freeSeatOccupants.forEach((person, index) => {
+            placeHuman(person.x, person.z, person.yaw, { pose: 'seated', variant: deskOccupants.length + index, gesture: person.gesture });
+        });
+
+        createCorridorBench(corridorLeftX + 0.36, 10.3, Math.PI / 2);
+        createCorridorBench(corridorRightX - 0.36, 12.35, -Math.PI / 2);
+        placeHuman(corridorLeftX + 0.55, 9.95, Math.PI / 2, { pose: 'seated', variant: 16, gesture: 'phone' });
+        placeHuman(corridorLeftX + 0.55, 10.65, Math.PI / 2, { pose: 'seated', variant: 17, gesture: 'chat' });
+        placeHuman(corridorRightX - 0.55, 12.0, -Math.PI / 2, { pose: 'seated', variant: 18, gesture: 'phone' });
+        placeHuman(corridorRightX - 0.55, 12.7, -Math.PI / 2, { pose: 'seated', variant: 19, gesture: 'chat' });
 
         // ==========================================
        // 7. ロッカーの配置
