@@ -3252,34 +3252,51 @@
             return person;
         }
 
-        const peoplePlacements = [
-            // メインデスク席: 椅子の中心座標に合わせ、必ず机側を向かせる
-            { x: -20.8, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -22.4, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -17.2, z: -0.48, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -15.2, z: 1.88, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -10.0, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -8.0, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -2.8, z: 1.62, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -0.8, z: -0.92, rotation: Math.PI / 2, pose: 'seated' },
-            { x: 11.6, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: 13.6, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
-            { x: 18.8, z: 1.62, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: 20.8, z: -0.92, rotation: Math.PI / 2, pose: 'seated' },
-            // フリー席・ソファ: 既存の椅子・ソファ座面位置に合わせる
-            { x: 6.11, z: -2.05, rotation: Math.PI / 4 + 0.03, pose: 'seated' },
-            { x: 3.59, z: -0.68, rotation: Math.PI - 0.04 - Math.PI / 4, pose: 'seated' },
-            { x: 8.41, z: -0.68, rotation: Math.PI / 4 + Math.PI / 2 + 0.05, pose: 'seated' },
+        const peoplePlacements = [];
+
+        // モニター付きデスク: 既存チェア座標から自動生成し、97席中88席（約90.7%）を埋める。
+        // デスク天板中心ではなく椅子座面中心に置くことで、机やモニターへのめり込みを避ける。
+        const mainDeskRows = [-21.6, -18.0, -14.4, -10.8, -7.2, -3.6, 0.0, 10.8, 14.4, 18.0, 21.6];
+        const mainDeskUnitLength = 1.4;
+        const mainDeskUnits = 4;
+        const mainDeskTotalLength = mainDeskUnits * mainDeskUnitLength;
+        const faceToFaceStagger = 0.22;
+        const skippedMainDeskSeatIndices = new Set([5, 16, 27, 38, 49, 60, 71, 82]);
+        let mainDeskSeatIndex = 0;
+        mainDeskRows.forEach((deskX) => {
+            for (let i = 0; i < mainDeskUnits; i++) {
+                const zOffset = (i * mainDeskUnitLength) - (mainDeskTotalLength / 2) + (mainDeskUnitLength / 2);
+                [
+                    { x: deskX + 0.8, z: zOffset + faceToFaceStagger, rotation: -Math.PI / 2 },
+                    { x: deskX - 0.8, z: zOffset - faceToFaceStagger, rotation: Math.PI / 2 }
+                ].forEach((seat) => {
+                    if (!skippedMainDeskSeatIndices.has(mainDeskSeatIndex)) {
+                        peoplePlacements.push({ ...seat, pose: 'seated' });
+                    }
+                    mainDeskSeatIndex++;
+                });
+            }
+        });
+
+        const wallMonitorDeskSeats = [-22.8, -17.2, -12.8, -7.2, -2.8, 2.8, 7.2, 12.8, 17.2]
+            .map((x) => ({ x, z: mossWallDeskZ - 0.65, rotation: 0, pose: 'seated' }));
+        wallMonitorDeskSeats.forEach((seat, index) => {
+            if (index !== 5) peoplePlacements.push(seat);
+        });
+
+        peoplePlacements.push(
+            // ブレイク用の机＆4椅子: 人数は据え置き、椅子の背もたれと反対側（テーブル側）へ向きを反転
+            { x: 6.11, z: -2.05, rotation: Math.PI / 4 + 0.03 + Math.PI, pose: 'seated' },
+            { x: 3.59, z: -0.68, rotation: Math.PI - 0.04 - Math.PI / 4 + Math.PI, pose: 'seated' },
+            { x: 8.41, z: -0.68, rotation: Math.PI / 4 + Math.PI / 2 + 0.05 + Math.PI, pose: 'seated' },
+            // ソファ席: 既存のソファ座面位置に合わせる
             { x: 24.2, z: 2.18, rotation: Math.PI, pose: 'seated' },
             { x: 24.2, z: 0.8, rotation: 0, pose: 'seated' },
             { x: 24.2, z: 5.7, rotation: Math.PI, pose: 'seated' },
             { x: 24.2, z: 4.3, rotation: 0, pose: 'seated' },
-            // 壁際デスク・カフェ周辺: 椅子座面に乗せ、机・テーブル方向へ向ける
-            { x: -22.8, z: -5.85, rotation: 0, pose: 'seated' },
-            { x: -17.2, z: -5.85, rotation: 0, pose: 'seated' },
-            { x: 12.8, z: -5.85, rotation: 0, pose: 'seated' },
-            { x: -27.96, z: -4.1, rotation: Math.PI - 0.04, pose: 'seated' },
-            { x: -31.29, z: -5.85, rotation: Math.PI / 2 + 0.05, pose: 'seated' },
+            // カフェ周辺のブレイク用席も同じくテーブル側へ反転
+            { x: -27.96, z: -4.1, rotation: Math.PI - 0.04 + Math.PI, pose: 'seated' },
+            { x: -31.29, z: -5.85, rotation: Math.PI / 2 + 0.05 + Math.PI, pose: 'seated' },
             // 玄関・廊下: 通行帯の端に寄せ、壁や受付設備にめり込まない位置に配置
             { x: -11.05, z: 8.85, rotation: Math.PI * 0.92, pose: 'standing' },
             { x: -13.12, z: 11.55, rotation: Math.PI / 2, pose: 'leaning' },
@@ -3287,7 +3304,7 @@
             { x: 4.25, z: 9.8, rotation: 0.12, pose: 'walking' },
             { x: 5.35, z: 12.25, rotation: Math.PI, pose: 'standing' },
             { x: -3.8, z: 10.45, rotation: Math.PI * 0.04, pose: 'standing' }
-        ];
+        );
 
         peoplePlacements.forEach((placement, index) => {
             const person = createLowPolyPerson({ pose: placement.pose, variant: index });
