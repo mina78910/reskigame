@@ -3163,9 +3163,159 @@
         createBoxSeatStation(24.9, 1.5, 0x459a85, 0x608ab6);
         createBoxSeatStation(24.9, 5.0, 0x608ab6, 0x459a85);
 
+        // ==========================================
+        // 9. 人物モデルの配置
+        // ==========================================
+        const PERSON_BASE_SCALE = 0.7;
+        const PERSON_PALETTE = {
+            skin: [0xf1c6a8, 0xd9a37f, 0xc58b6a, 0x8f5f43, 0xf0d2b6],
+            hair: [0x1f1512, 0x3a2416, 0x5a3a22, 0x111827, 0x6b4f3a],
+            tops: [0x2f6f9f, 0xb23a48, 0x2f855a, 0xf59e0b, 0x4f46e5, 0x7c3aed, 0x0f766e, 0xe11d48],
+            bottoms: [0x1f2937, 0x334155, 0x475569, 0x2d3748, 0x3f3f46],
+            shoes: [0x111111, 0x2f2f2f, 0x4b5563]
+        };
+
+        function makePersonMaterial(color, roughness = 0.72) {
+            return new THREE.MeshStandardMaterial({ color, roughness, flatShading: true });
+        }
+
+        function addPersonLimb(parent, name, geometry, material, position, rotation = [0, 0, 0]) {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.name = name;
+            mesh.position.set(position[0], position[1], position[2]);
+            mesh.rotation.set(rotation[0], rotation[1], rotation[2]);
+            mesh.castShadow = true;
+            mesh.receiveShadow = false;
+            parent.add(mesh);
+            return mesh;
+        }
+
+        function createLowPolyPerson({
+            topColor = 0x2f6f9f,
+            bottomColor = 0x334155,
+            skinColor = 0xf1c6a8,
+            hairColor = 0x2b1d16,
+            pose = 'standing',
+            gesture = 'neutral'
+        } = {}) {
+            const person = new THREE.Group();
+            person.userData.personScale = PERSON_BASE_SCALE;
+
+            const skinMat = makePersonMaterial(skinColor, 0.78);
+            const hairMat = makePersonMaterial(hairColor, 0.82);
+            const topMat = makePersonMaterial(topColor, 0.7);
+            const bottomMat = makePersonMaterial(bottomColor, 0.74);
+            const shoeMat = makePersonMaterial(PERSON_PALETTE.shoes[Math.floor(Math.random() * PERSON_PALETTE.shoes.length)], 0.68);
+
+            const torsoGeo = new THREE.CylinderGeometry(0.22, 0.28, 0.58, 6);
+            const headGeo = new THREE.SphereGeometry(0.17, 8, 6);
+            const hairGeo = new THREE.SphereGeometry(0.18, 8, 5, 0, Math.PI * 2, 0, Math.PI * 0.56);
+            const neckGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.08, 6);
+            const armGeo = new THREE.CylinderGeometry(0.045, 0.04, 0.5, 6);
+            const forearmGeo = new THREE.CylinderGeometry(0.04, 0.035, 0.42, 6);
+            const legGeo = new THREE.CylinderGeometry(0.06, 0.055, 0.62, 6);
+            const calfGeo = new THREE.CylinderGeometry(0.055, 0.045, 0.55, 6);
+            const shoeGeo = new THREE.BoxGeometry(0.12, 0.055, 0.24);
+
+            const seated = pose === 'sitting' || pose === 'sofa';
+            const torsoY = seated ? 0.92 : 1.0;
+            const torsoTilt = seated ? -0.08 : 0;
+
+            addPersonLimb(person, 'torso', torsoGeo, topMat, [0, torsoY, 0], [torsoTilt, 0, 0]);
+            addPersonLimb(person, 'neck', neckGeo, skinMat, [0, torsoY + 0.33, 0]);
+            addPersonLimb(person, 'head', headGeo, skinMat, [0, torsoY + 0.53, 0]);
+            const hair = addPersonLimb(person, 'hair', hairGeo, hairMat, [0, torsoY + 0.58, -0.015]);
+            hair.scale.set(1.0, 0.88, 1.05);
+
+            const armForward = gesture === 'typing' ? -0.42 : gesture === 'talking' ? -0.22 : -0.04;
+            const armSpread = gesture === 'talking' ? 0.38 : 0.27;
+            addPersonLimb(person, 'leftUpperArm', armGeo, topMat, [-0.26, torsoY + 0.12, -0.02], [0.18, 0, -0.38]);
+            addPersonLimb(person, 'rightUpperArm', armGeo, topMat, [0.26, torsoY + 0.12, -0.02], [0.18, 0, 0.38]);
+            addPersonLimb(person, 'leftForearm', forearmGeo, skinMat, [-armSpread, torsoY - 0.1, armForward], [gesture === 'typing' ? 1.2 : 0.45, 0, -0.12]);
+            addPersonLimb(person, 'rightForearm', forearmGeo, skinMat, [armSpread, torsoY - 0.1, armForward], [gesture === 'typing' ? 1.2 : 0.45, 0, 0.12]);
+
+            if (seated) {
+                addPersonLimb(person, 'leftThigh', legGeo, bottomMat, [-0.11, 0.63, -0.23], [Math.PI / 2, 0, 0.03]);
+                addPersonLimb(person, 'rightThigh', legGeo, bottomMat, [0.11, 0.63, -0.23], [Math.PI / 2, 0, -0.03]);
+                addPersonLimb(person, 'leftCalf', calfGeo, bottomMat, [-0.12, 0.34, -0.5], [0.18, 0, 0.02]);
+                addPersonLimb(person, 'rightCalf', calfGeo, bottomMat, [0.12, 0.34, -0.5], [0.18, 0, -0.02]);
+                addPersonLimb(person, 'leftShoe', shoeGeo, shoeMat, [-0.12, 0.08, -0.58], [0, 0, 0.02]);
+                addPersonLimb(person, 'rightShoe', shoeGeo, shoeMat, [0.12, 0.08, -0.58], [0, 0, -0.02]);
+            } else {
+                addPersonLimb(person, 'leftLeg', legGeo, bottomMat, [-0.1, 0.48, 0], [0.04, 0, 0.06]);
+                addPersonLimb(person, 'rightLeg', legGeo, bottomMat, [0.1, 0.48, 0], [-0.04, 0, -0.06]);
+                addPersonLimb(person, 'leftCalf', calfGeo, bottomMat, [-0.1, 0.19, 0.025], [-0.02, 0, 0.03]);
+                addPersonLimb(person, 'rightCalf', calfGeo, bottomMat, [0.1, 0.19, -0.025], [0.02, 0, -0.03]);
+                addPersonLimb(person, 'leftShoe', shoeGeo, shoeMat, [-0.1, 0.03, 0.08]);
+                addPersonLimb(person, 'rightShoe', shoeGeo, shoeMat, [0.1, 0.03, -0.08]);
+            }
+
+            person.scale.setScalar(PERSON_BASE_SCALE);
+            return person;
+        }
+
+        function addPerson({ x, z, rotation = 0, pose = 'standing', gesture = 'neutral', top, bottom, skin, hair }) {
+            const person = createLowPolyPerson({
+                topColor: top ?? PERSON_PALETTE.tops[Math.floor(Math.random() * PERSON_PALETTE.tops.length)],
+                bottomColor: bottom ?? PERSON_PALETTE.bottoms[Math.floor(Math.random() * PERSON_PALETTE.bottoms.length)],
+                skinColor: skin ?? PERSON_PALETTE.skin[Math.floor(Math.random() * PERSON_PALETTE.skin.length)],
+                hairColor: hair ?? PERSON_PALETTE.hair[Math.floor(Math.random() * PERSON_PALETTE.hair.length)],
+                pose,
+                gesture
+            });
+            person.position.set(x, 0, z);
+            person.rotation.y = rotation;
+            scene.add(person);
+            return person;
+        }
+
+        const personPlacements = [
+            // メインデスクで作業中の人たち
+            { x: -20.8, z: -2.35, rotation: -Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: -22.4, z: 0.35, rotation: Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: -17.2, z: 2.45, rotation: -Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: -11.6, z: -0.35, rotation: Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: -7.2, z: 2.25, rotation: -Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: -4.4, z: -2.5, rotation: Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: 10.8, z: -2.4, rotation: -Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: 14.4, z: 0.35, rotation: Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: 18.0, z: 2.45, rotation: -Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+            { x: 21.6, z: -0.35, rotation: Math.PI / 2, pose: 'sitting', gesture: 'typing' },
+
+            // 中央フリー席と自販機付近の席で会話・休憩している人たち
+            { x: 4.72, z: -1.82, rotation: 0.82, pose: 'sitting', gesture: 'talking' },
+            { x: 6.23, z: -3.28, rotation: -2.35, pose: 'sitting', gesture: 'talking' },
+            { x: 2.37, z: 0.67, rotation: -0.78, pose: 'sitting', gesture: 'neutral' },
+            { x: 8.48, z: -0.67, rotation: 2.35, pose: 'sitting', gesture: 'neutral' },
+            { x: -27.85, z: -2.28, rotation: 0.05, pose: 'sitting', gesture: 'talking' },
+            { x: -32.14, z: -6.72, rotation: Math.PI - 0.04, pose: 'sitting', gesture: 'neutral' },
+
+            // ソファ席・カフェ寄りでくつろぐ人たち
+            { x: 24.2, z: 2.2, rotation: Math.PI, pose: 'sofa', gesture: 'talking' },
+            { x: 24.2, z: 0.8, rotation: 0, pose: 'sofa', gesture: 'neutral' },
+            { x: 24.2, z: 5.7, rotation: Math.PI, pose: 'sofa', gesture: 'talking' },
+            { x: 24.2, z: 4.3, rotation: 0, pose: 'sofa', gesture: 'neutral' },
+
+            // 玄関・ロッカー・ガラス出入口付近で立ち話や移動中の人たち
+            { x: -11.8, z: 9.25, rotation: Math.PI, pose: 'standing', gesture: 'neutral' },
+            { x: -9.55, z: 10.55, rotation: -Math.PI / 2, pose: 'standing', gesture: 'talking' },
+            { x: -14.65, z: 10.2, rotation: Math.PI / 2, pose: 'standing', gesture: 'neutral' },
+            { x: 3.95, z: 8.55, rotation: 0.18, pose: 'standing', gesture: 'neutral' },
+
+            // 廊下とエレベーターホールを自然に歩いている人たち
+            { x: 4.45, z: 11.25, rotation: 0, pose: 'standing', gesture: 'neutral' },
+            { x: 5.25, z: 13.9, rotation: Math.PI, pose: 'standing', gesture: 'talking' },
+            { x: 1.2, z: 14.15, rotation: -Math.PI / 2, pose: 'standing', gesture: 'neutral' },
+            { x: -3.8, z: 14.05, rotation: -Math.PI / 2, pose: 'standing', gesture: 'neutral' },
+            { x: -8.2, z: 12.0, rotation: Math.PI, pose: 'standing', gesture: 'talking' },
+            { x: -8.3, z: 10.05, rotation: 0, pose: 'standing', gesture: 'neutral' }
+        ];
+
+        personPlacements.forEach(addPerson);
+
 
         // ==========================================
-        // 9. コントローラー (PC & モバイル対応)
+        // 10. コントローラー (PC & モバイル対応)
         // ==========================================
         const uiLayer = document.getElementById('ui-layer');
         const crosshair = document.getElementById('crosshair');
