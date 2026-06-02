@@ -2409,17 +2409,33 @@
         // ==========================================
         function createMonitorModel() {
             const monitorGroup = new THREE.Group();
-            const standMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.3 });
-            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.2), standMat);
-            stand.position.y = 0.1;
-            monitorGroup.add(stand);
-            const base = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.01, 0.15), standMat);
-            base.position.y = 0.005;
+            const standMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.3, roughness: 0.35 });
+
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.018, 32), standMat);
+            base.position.y = 0.009;
+            base.scale.z = 0.78;
+            base.castShadow = true;
+            base.receiveShadow = true;
             monitorGroup.add(base);
+
+            const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.22, 24), standMat);
+            stand.position.y = 0.13;
+            stand.castShadow = true;
+            monitorGroup.add(stand);
+
+            const neck = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.12), standMat);
+            neck.position.y = 0.24;
+            neck.castShadow = true;
+            monitorGroup.add(neck);
+
             const body = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.35, 0.55), new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.9 }));
-            body.position.set(0, 0.3, 0); 
+            body.position.set(0, 0.38, 0);
             body.castShadow = true;
             monitorGroup.add(body);
+
+            const screen = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.28, 0.48), new THREE.MeshStandardMaterial({ color: 0x101827, roughness: 0.55, emissive: 0x07111f, emissiveIntensity: 0.15 }));
+            screen.position.set(-0.002, 0.38, 0);
+            monitorGroup.add(screen);
             return monitorGroup;
         }
 
@@ -2453,7 +2469,8 @@
             for (let i = 0; i < units; i++) {
                 const zOffset = (i * unitLength) - (totalLength / 2) + (unitLength / 2);
                 const monitor = createMonitorModel();
-                monitor.position.set(0, 0.72, zOffset);
+                monitor.position.set(0.18, 0.72, zOffset + 0.08);
+                monitor.rotation.y = -0.22;
                 rowGroup.add(monitor);
                 
                 const chairR = createDeskChairModel(getNextChairColor());
@@ -2510,8 +2527,8 @@
             stationGroup.add(legR);
             
             const monitor = createMonitorModel();
-            monitor.rotation.y = Math.PI / 2; 
-            monitor.position.set(0, deskHeight, 0.15); 
+            monitor.rotation.y = Math.PI / 2 - 0.22;
+            monitor.position.set(0.18, deskHeight, 0.18);
             stationGroup.add(monitor);
             
             const laptop = createLaptopModel();
