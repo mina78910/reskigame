@@ -3222,14 +3222,14 @@
             const armGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.58, 6);
             [-1, 1].forEach((side) => {
                 const upperArm = new THREE.Mesh(armGeo, skinMat);
-                upperArm.position.set(side * 0.33, shoulderY - 0.11, isSeated ? -0.08 : 0.02);
+                upperArm.position.set(side * 0.33, shoulderY - 0.11, isSeated ? 0.08 : 0.02);
                 upperArm.rotation.z = side * (isSeated ? 0.25 : 0.15);
                 upperArm.rotation.x = isSeated ? -0.92 : (isWalking ? side * 0.34 : -0.08);
                 upperArm.castShadow = true;
                 person.add(upperArm);
 
                 const hand = new THREE.Mesh(new THREE.DodecahedronGeometry(0.07, 0), skinMat);
-                hand.position.set(side * 0.38, isSeated ? 1.02 : 1.12, isSeated ? -0.32 : side * (isWalking ? 0.12 : 0.03));
+                hand.position.set(side * 0.38, isSeated ? 1.02 : 1.12, isSeated ? 0.32 : side * (isWalking ? 0.12 : 0.03));
                 hand.castShadow = true;
                 person.add(hand);
             });
@@ -3237,13 +3237,13 @@
             const legGeo = new THREE.CylinderGeometry(0.075, 0.085, isSeated ? 0.54 : 0.86, 6);
             [-1, 1].forEach((side) => {
                 const leg = new THREE.Mesh(legGeo, pantsMat);
-                leg.position.set(side * 0.12, isSeated ? 0.46 : 0.52, isSeated ? -0.22 : 0);
+                leg.position.set(side * 0.12, isSeated ? 0.46 : 0.52, isSeated ? 0.22 : 0);
                 leg.rotation.x = isSeated ? Math.PI / 2.7 : (isWalking ? side * 0.18 : 0);
                 leg.castShadow = true;
                 person.add(leg);
 
                 const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.055, 0.24), shoeMat);
-                shoe.position.set(side * 0.12, 0.055, isSeated ? -0.47 : (isWalking ? -side * 0.12 : -0.03));
+                shoe.position.set(side * 0.12, 0.055, isSeated ? 0.47 : (isWalking ? side * 0.12 : 0.03));
                 shoe.rotation.y = isWalking ? side * 0.08 : 0;
                 shoe.castShadow = true;
                 person.add(shoe);
@@ -3253,40 +3253,40 @@
         }
 
         const peoplePlacements = [
-            // メインデスク席: 仕事中の人を左右の島に点在
-            { x: -21.6, z: -1.9, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -21.6, z: 1.2, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -18.0, z: -0.3, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -14.4, z: 1.85, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -10.8, z: -2.15, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -7.2, z: 0.35, rotation: Math.PI / 2, pose: 'seated' },
-            { x: -3.6, z: 2.1, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: 0.0, z: -1.2, rotation: Math.PI / 2, pose: 'seated' },
-            { x: 10.8, z: -2.0, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: 14.4, z: 0.6, rotation: Math.PI / 2, pose: 'seated' },
-            { x: 18.0, z: 2.0, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: 21.6, z: -0.9, rotation: Math.PI / 2, pose: 'seated' },
-            // フリー席・ソファ: 打ち合わせや休憩中
-            { x: 5.05, z: -1.95, rotation: Math.PI * 0.35, pose: 'seated' },
-            { x: 6.2, z: 0.35, rotation: -Math.PI * 0.72, pose: 'seated' },
-            { x: 3.7, z: 0.55, rotation: Math.PI * 0.65, pose: 'seated' },
+            // メインデスク席: 椅子の中心座標に合わせ、必ず机側を向かせる
+            { x: -20.8, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: -22.4, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
+            { x: -17.2, z: -0.48, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: -15.2, z: 1.88, rotation: Math.PI / 2, pose: 'seated' },
+            { x: -10.0, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: -8.0, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
+            { x: -2.8, z: 1.62, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: -0.8, z: -0.92, rotation: Math.PI / 2, pose: 'seated' },
+            { x: 11.6, z: -1.88, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: 13.6, z: 0.48, rotation: Math.PI / 2, pose: 'seated' },
+            { x: 18.8, z: 1.62, rotation: -Math.PI / 2, pose: 'seated' },
+            { x: 20.8, z: -0.92, rotation: Math.PI / 2, pose: 'seated' },
+            // フリー席・ソファ: 既存の椅子・ソファ座面位置に合わせる
+            { x: 6.11, z: -2.05, rotation: Math.PI / 4 + 0.03, pose: 'seated' },
+            { x: 3.59, z: -0.68, rotation: Math.PI - 0.04 - Math.PI / 4, pose: 'seated' },
+            { x: 8.41, z: -0.68, rotation: Math.PI / 4 + Math.PI / 2 + 0.05, pose: 'seated' },
             { x: 24.2, z: 2.18, rotation: Math.PI, pose: 'seated' },
             { x: 24.2, z: 0.8, rotation: 0, pose: 'seated' },
             { x: 24.2, z: 5.7, rotation: Math.PI, pose: 'seated' },
             { x: 24.2, z: 4.3, rotation: 0, pose: 'seated' },
-            // 壁際デスク・カフェ周辺
+            // 壁際デスク・カフェ周辺: 椅子座面に乗せ、机・テーブル方向へ向ける
             { x: -22.8, z: -5.85, rotation: 0, pose: 'seated' },
             { x: -17.2, z: -5.85, rotation: 0, pose: 'seated' },
             { x: 12.8, z: -5.85, rotation: 0, pose: 'seated' },
-            { x: -30.6, z: -3.9, rotation: -Math.PI / 2, pose: 'seated' },
-            { x: -28.2, z: -5.25, rotation: Math.PI / 2, pose: 'seated' },
-            // 玄関・廊下: 来客や移動中の人を通路端に自然配置
-            { x: -11.25, z: 9.0, rotation: Math.PI * 0.92, pose: 'standing' },
-            { x: -13.45, z: 11.9, rotation: Math.PI / 2, pose: 'leaning' },
-            { x: -10.25, z: 13.8, rotation: -Math.PI * 0.82, pose: 'walking' },
-            { x: 4.45, z: 9.8, rotation: 0.12, pose: 'walking' },
-            { x: 5.25, z: 12.4, rotation: Math.PI, pose: 'standing' },
-            { x: -3.8, z: 10.6, rotation: Math.PI * 0.04, pose: 'standing' }
+            { x: -27.96, z: -4.1, rotation: Math.PI - 0.04, pose: 'seated' },
+            { x: -31.29, z: -5.85, rotation: Math.PI / 2 + 0.05, pose: 'seated' },
+            // 玄関・廊下: 通行帯の端に寄せ、壁や受付設備にめり込まない位置に配置
+            { x: -11.05, z: 8.85, rotation: Math.PI * 0.92, pose: 'standing' },
+            { x: -13.12, z: 11.55, rotation: Math.PI / 2, pose: 'leaning' },
+            { x: -10.3, z: 13.55, rotation: -Math.PI * 0.82, pose: 'walking' },
+            { x: 4.25, z: 9.8, rotation: 0.12, pose: 'walking' },
+            { x: 5.35, z: 12.25, rotation: Math.PI, pose: 'standing' },
+            { x: -3.8, z: 10.45, rotation: Math.PI * 0.04, pose: 'standing' }
         ];
 
         peoplePlacements.forEach((placement, index) => {
