@@ -3163,6 +3163,131 @@
         createBoxSeatStation(24.9, 1.5, 0x459a85, 0x608ab6);
         createBoxSeatStation(24.9, 5.0, 0x608ab6, 0x459a85);
 
+        // ==========================================
+        // 8.5. 人物配置（合計20人）
+        // ==========================================
+        function createLimbBetween(start, end, radius, material) {
+            const direction = new THREE.Vector3(end[0] - start[0], end[1] - start[1], end[2] - start[2]);
+            const length = direction.length();
+            const limb = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, 12), material);
+            limb.position.set((start[0] + end[0]) / 2, (start[1] + end[1]) / 2, (start[2] + end[2]) / 2);
+            limb.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+            setMeshShadow(limb);
+            return limb;
+        }
+
+        function createOfficePerson(options = {}) {
+            const { seated = false, skin = 0xf1c7a7, shirt = 0x3b82c4, pants = 0x2f3a4a, hair = 0x27211d } = options;
+            const person = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.82 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.72 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: pants, roughness: 0.78 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: hair, roughness: 0.9 });
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x1f2933, roughness: 0.68 });
+
+            const hipY = seated ? 0.66 : 0.92;
+            const shoulderY = seated ? 1.18 : 1.42;
+            const headY = seated ? 1.42 : 1.68;
+
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, shoulderY - hipY, 16), shirtMat);
+            torso.position.y = (hipY + shoulderY) / 2;
+            torso.scale.x = 1.08;
+            setMeshShadow(torso);
+            person.add(torso);
+
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.08, 12), skinMat);
+            neck.position.y = shoulderY + 0.045;
+            setMeshShadow(neck);
+            person.add(neck);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), skinMat);
+            head.position.set(0, headY, 0.02);
+            setMeshShadow(head);
+            person.add(head);
+
+            const hairCap = new THREE.Mesh(new THREE.SphereGeometry(0.163, 24, 8, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+            hairCap.position.set(0, headY + 0.015, 0.02);
+            setMeshShadow(hairCap);
+            person.add(hairCap);
+
+            const shoulderL = [-0.17, shoulderY - 0.04, 0.02];
+            const shoulderR = [0.17, shoulderY - 0.04, 0.02];
+            const elbowL = [-0.28, seated ? 0.98 : 1.08, seated ? 0.20 : 0.10];
+            const elbowR = [0.28, seated ? 0.98 : 1.04, seated ? 0.20 : 0.02];
+            const handL = [-0.27, seated ? 0.78 : 0.82, seated ? 0.46 : 0.12];
+            const handR = [0.27, seated ? 0.78 : 0.82, seated ? 0.46 : 0.06];
+            person.add(createLimbBetween(shoulderL, elbowL, 0.045, shirtMat));
+            person.add(createLimbBetween(shoulderR, elbowR, 0.045, shirtMat));
+            person.add(createLimbBetween(elbowL, handL, 0.035, skinMat));
+            person.add(createLimbBetween(elbowR, handR, 0.035, skinMat));
+
+            if (seated) {
+                const hipL = [-0.11, hipY, 0.02];
+                const hipR = [0.11, hipY, 0.02];
+                const kneeL = [-0.14, 0.53, 0.43];
+                const kneeR = [0.14, 0.53, 0.43];
+                const footL = [-0.14, 0.10, 0.49];
+                const footR = [0.14, 0.10, 0.49];
+                person.add(createLimbBetween(hipL, kneeL, 0.06, pantsMat));
+                person.add(createLimbBetween(hipR, kneeR, 0.06, pantsMat));
+                person.add(createLimbBetween(kneeL, footL, 0.052, pantsMat));
+                person.add(createLimbBetween(kneeR, footR, 0.052, pantsMat));
+            } else {
+                person.add(createLimbBetween([-0.11, hipY, 0.02], [-0.12, 0.48, 0.03], 0.062, pantsMat));
+                person.add(createLimbBetween([0.11, hipY, 0.02], [0.12, 0.48, -0.02], 0.062, pantsMat));
+                person.add(createLimbBetween([-0.12, 0.48, 0.03], [-0.13, 0.10, 0.05], 0.055, pantsMat));
+                person.add(createLimbBetween([0.12, 0.48, -0.02], [0.13, 0.10, -0.05], 0.055, pantsMat));
+            }
+
+            [[-0.14, 0.055, seated ? 0.52 : 0.07], [0.14, 0.055, seated ? 0.52 : -0.05]].forEach(([x, y, z]) => {
+                const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.06, 0.22), shoeMat);
+                shoe.position.set(x, y, z);
+                setMeshShadow(shoe);
+                person.add(shoe);
+            });
+
+            return person;
+        }
+
+        function placeOfficePerson(config) {
+            const person = createOfficePerson(config);
+            person.position.set(config.x, 0, config.z);
+            person.rotation.y = config.rotation || 0;
+            const scale = config.scale || 1;
+            person.scale.setScalar(scale);
+            scene.add(person);
+        }
+
+        const officePeople = [
+            // メインデスクで作業している人たち
+            { x: -18.8, z: -1.12, rotation: Math.PI / 2, seated: true, shirt: 0x2563eb, pants: 0x1f2937, skin: 0xf0c6a0, hair: 0x2b211a },
+            { x: -16.4, z: 1.12, rotation: -Math.PI / 2, seated: true, shirt: 0xdc7f35, pants: 0x374151, skin: 0xd6a77f, hair: 0x3b2a1a },
+            { x: -8.0, z: -2.52, rotation: Math.PI / 2, seated: true, shirt: 0x16a34a, pants: 0x223044, skin: 0xf5d0b5, hair: 0x161616 },
+            { x: -4.4, z: 2.52, rotation: -Math.PI / 2, seated: true, shirt: 0x9333ea, pants: 0x334155, skin: 0xc98f68, hair: 0x201714 },
+            { x: 11.6, z: -1.12, rotation: Math.PI / 2, seated: true, shirt: 0x0f766e, pants: 0x263442, skin: 0xe8b794, hair: 0x31231d },
+            { x: 15.2, z: 2.52, rotation: -Math.PI / 2, seated: true, shirt: 0xbe123c, pants: 0x2f3640, skin: 0xf1c7a7, hair: 0x35251d },
+            { x: 19.6, z: -2.52, rotation: Math.PI / 2, seated: true, shirt: 0x4f46e5, pants: 0x1f2937, skin: 0xd2a17b, hair: 0x120f0f },
+
+            // 中央フリー席とソファ席で会話・休憩している人たち
+            { x: 5.98, z: -3.22, rotation: Math.PI * 0.75, seated: true, shirt: 0xf59e0b, pants: 0x374151, skin: 0xf2c49d, hair: 0x2a201a },
+            { x: 2.28, z: -0.52, rotation: Math.PI * 0.25, seated: true, shirt: 0x0891b2, pants: 0x2b3440, skin: 0xc6865b, hair: 0x1f1a16 },
+            { x: 7.32, z: 0.56, rotation: -Math.PI * 0.75, seated: true, shirt: 0x84cc16, pants: 0x28313d, skin: 0xe1ad85, hair: 0x141414 },
+            { x: 24.2, z: 0.78, rotation: 0, seated: true, shirt: 0x0ea5e9, pants: 0x2f3648, skin: 0xf0c7ad, hair: 0x4a2f1b },
+            { x: 24.2, z: 5.72, rotation: Math.PI, seated: true, shirt: 0xa855f7, pants: 0x1f2937, skin: 0xd59a74, hair: 0x241a13 },
+
+            // 玄関ベンチ・廊下にいる人たち
+            { x: -24.65, z: 10.55, rotation: Math.PI / 2, seated: true, shirt: 0xef4444, pants: 0x343b46, skin: 0xf3c7a5, hair: 0x2b2119 },
+            { x: -24.65, z: 12.15, rotation: Math.PI / 2, seated: true, shirt: 0x22c55e, pants: 0x2f3b4b, skin: 0xb87852, hair: 0x191514 },
+            { x: -2.6, z: 12.6, rotation: Math.PI * 0.62, seated: false, shirt: 0x38bdf8, pants: 0x2d3748, skin: 0xe7b891, hair: 0x17120f },
+            { x: -6.9, z: 14.1, rotation: Math.PI * 1.08, seated: false, shirt: 0xfb7185, pants: 0x273140, skin: 0xf4d0b4, hair: 0x33231a },
+            { x: 4.6, z: 12.4, rotation: Math.PI * 0.96, seated: false, shirt: 0xf97316, pants: 0x334155, skin: 0xcd9068, hair: 0x201713 },
+            { x: 8.6, z: 14.35, rotation: -Math.PI * 0.18, seated: false, shirt: 0x10b981, pants: 0x263241, skin: 0xf1c19c, hair: 0x120f0d },
+            { x: -15.1, z: 9.55, rotation: -Math.PI / 2, seated: false, shirt: 0x6366f1, pants: 0x1f2937, skin: 0xd7a37c, hair: 0x3c2818 },
+            { x: -18.8, z: 12.2, rotation: Math.PI * 0.35, seated: false, shirt: 0xeab308, pants: 0x374151, skin: 0xf2c8a7, hair: 0x241913 }
+        ];
+
+        officePeople.forEach(placeOfficePerson);
+
 
         // ==========================================
         // 9. コントローラー (PC & モバイル対応)
