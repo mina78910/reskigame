@@ -789,7 +789,7 @@
     }
 
     function updateQueue(delta) {
-      const canBoard = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'boarded';
+      const canBoard = state.phase === 'boarding' || state.phase === 'closing';
       queuePeople.forEach((p, i) => {
         const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
@@ -818,6 +818,10 @@
 
     function updateLatePassengers(delta) {
       latePassengers.forEach((p, i) => {
+        if (boarded || failed) {
+          p.position.y = Math.sin(elapsed * 4 + i) * 0.012;
+          return;
+        }
         if (elapsed < p.userData.rushDelay) {
           p.position.y = Math.sin(elapsed * 4 + i) * 0.012;
           return;
@@ -1063,6 +1067,7 @@
     }
 
     function resolveCrowdContacts() {
+      if (boarded || failed) return;
       const movingPassengers = queuePeople.concat(latePassengers);
       resolvePassengerGroup(movingPassengers, 0.44, 0.55);
 
@@ -1217,7 +1222,7 @@
       updateQueue(delta);
       updateLatePassengers(delta);
       updateAutoView(delta);
-      if (started) movePlayer(delta);
+      if (started && !boarded && !failed) movePlayer(delta);
       resolveCrowdContacts();
       updateCamera();
       updateCoordinates();
