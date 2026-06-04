@@ -196,7 +196,7 @@
       <div class="start-button">クリック / タップで開始 →</div>
       <div class="controls">
         <span>WASD / 矢印：移動</span>
-        <span>ドラッグ：視点回転</span>
+        <span>視点：前方へ自動追従</span>
         <span>スマホ：左下スティック</span>
       </div>
     </div>
@@ -206,7 +206,7 @@
     <div id="phase">発車前のホーム</div>
     <div id="message">黄色い線の内側で、東西線の行列最後尾に並んでいる。到着まで <span id="timer">5.0</span> 秒。</div>
   </div>
-  <div id="hint">青い人物があなたです。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。行列の流れに合わせて押し込みましょう。</div>
+  <div id="hint">青い人物があなたです。視点は常に前方へ自動追従します。閉扉アナウンスまでに、ドアへ歩き続けて車内へ押し込みましょう。</div>
   <div id="joystick-zone"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -238,15 +238,15 @@
     const keys = new Set();
     const colliders = [];
     const queuePeople = [];
+    const rushPeople = [];
     const packedPeople = [];
     const doors = [];
 
     let started = false;
     let elapsed = 0;
     let yaw = Math.PI;
-    let pitch = -0.18;
-    let isDragging = false;
-    let lastPointer = { x: 0, y: 0 };
+    const pitch = -0.18;
+    let announcementPlayed = false;
     let mobileMove = { x: 0, y: 0 };
     let boarded = false;
     let failed = false;
@@ -265,6 +265,9 @@
     const platformEdgeX = -4.35;
     const trainFloorX = -5.25;
     const trainDoorZ = -4.7;
+    const closingStartTime = 19.5;
+    const failureTime = 22.0;
+    const closingAnnouncementText = 'まもなくドアが閉まります。無理なご乗車はおやめください。';
 
     const player = createPerson({
       jacket: 0x2563eb,
@@ -282,6 +285,7 @@
     const train = createTrain();
     scene.add(train);
     createQueue();
+    createRushPassengers();
     createPackedCar();
     updateTrainPosition();
     updateCamera();
@@ -545,6 +549,31 @@
       }
     }
 
+    function createRushPassengers() {
+      const colors = [0x1d4ed8, 0x7c2d12, 0x475569, 0x0f766e, 0x6d28d9, 0x9f1239, 0x3f3f46];
+      for (let i = 0; i < 24; i++) {
+        const p = createPerson({
+          jacket: colors[i % colors.length],
+          pants: 0x111827,
+          skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4,
+          scale: 0.92 + Math.random() * 0.13,
+          bag: i % 3 !== 1
+        });
+        const side = i % 2 === 0 ? 1 : -1;
+        p.position.set(2.5 + Math.random() * 3.2, 0, trainDoorZ + side * (3.6 + Math.random() * 8.5));
+        p.rotation.y = Math.atan2(doorX - p.position.x, trainDoorZ - p.position.z);
+        p.userData.start = p.position.clone();
+        p.userData.target = new THREE.Vector3(
+          -3.35 + (Math.random() - 0.5) * 0.55,
+          0,
+          trainDoorZ + (Math.random() - 0.5) * 2.7
+        );
+        p.userData.delay = 8.8 + Math.random() * 2.6;
+        scene.add(p);
+        rushPeople.push(p);
+      }
+    }
+
     function createPackedCar() {
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
       for (let i = 0; i < 46; i++) {
@@ -580,6 +609,8 @@
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
 
+      updateRushPassengers();
+
       if (state.phase === 'waiting') {
         const queueEnd = 8.3;
         const dx = player.position.x - doorX;
@@ -591,6 +622,22 @@
       }
     }
 
+    function updateRushPassengers() {
+      const active = state.phase === 'doors' || state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'failed';
+      rushPeople.forEach((p, i) => {
+        if (active && elapsed > p.userData.delay) {
+          const t = Math.min(1, (elapsed - p.userData.delay) / 3.6);
+          const eased = easeInOut(t);
+          p.position.x = THREE.MathUtils.lerp(p.userData.start.x, p.userData.target.x, eased);
+          p.position.z = THREE.MathUtils.lerp(p.userData.start.z, p.userData.target.z, eased);
+        }
+        const faceX = doorX - p.position.x;
+        const faceZ = trainDoorZ - p.position.z;
+        p.rotation.y = Math.atan2(faceX, faceZ);
+        p.position.y = Math.sin(elapsed * 6 + i * 0.7) * 0.018;
+      });
+    }
+
     function easeInOut(t) {
       return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
@@ -599,7 +646,7 @@
       if (failed) {
         state.phase = 'failed';
         phaseEl.textContent = '乗車失敗';
-        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        messageEl.textContent = 'ドアが閉まり、あなたと乗れなかった乗客たちはホームに取り残された。';
         return;
       }
 
@@ -621,24 +668,27 @@
       if (elapsed < 9.2) {
         state.phase = 'doors';
         phaseEl.textContent = 'ドア開扉';
-        messageEl.textContent = 'ドアが開いた。車内の人波が少しだけ揺れ、行列の先頭からゆっくり吸い込まれていく。';
+        messageEl.textContent = 'ドアが開いた。行列だけでなく、周囲の乗客も一斉にドアへ集中しはじめた。';
         return;
       }
 
-      if (!boarded && elapsed >= 22) {
+      if (!boarded && elapsed >= failureTime) {
         failed = true;
         state.phase = 'failed';
         document.body.classList.add('failed');
         phaseEl.textContent = '乗車失敗';
-        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        messageEl.textContent = 'ドアが閉まり、あなたと乗れなかった乗客たちはホームに取り残された。';
         return;
       }
 
-      if (!boarded && elapsed >= 19.5) {
-        state.phase = 'closing';
-        phaseEl.textContent = 'ドア閉扉中';
-        messageEl.textContent = '発車ベルが鳴り、ドアが閉まりはじめた。乗れていないと失敗になる。';
-        return;
+      if (elapsed >= closingStartTime) {
+        announceClosing();
+        if (!boarded) {
+          state.phase = 'closing';
+          phaseEl.textContent = '閉扉アナウンス';
+          messageEl.textContent = `「${closingAnnouncementText}」ドアが閉まりはじめた。乗れていないとホームに取り残される。`;
+          return;
+        }
       }
 
       if (!boarded) {
@@ -648,12 +698,24 @@
       }
     }
 
+    function announceClosing() {
+      if (announcementPlayed) return;
+      announcementPlayed = true;
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(closingAnnouncementText);
+        utterance.lang = 'ja-JP';
+        utterance.rate = 1.05;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
     function updateTrain(delta) {
       if (elapsed >= 5 && state.trainZ < state.trainTargetZ) {
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
       }
-      const doorTarget = !boarded && elapsed >= 19.5 ? 0 : (elapsed >= 8.2 ? 1 : 0);
+      const doorTarget = elapsed >= closingStartTime ? 0 : (elapsed >= 8.2 ? 1 : 0);
       state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, doorTarget, doorTarget > state.doorsOpen ? 3.2 : 4.8, delta);
       state.rumble = Math.max(0, state.rumble - delta * 0.6);
       state.crowdPulse += delta;
@@ -675,6 +737,7 @@
       input.x += mobileMove.x;
       input.y += mobileMove.y;
       if (input.length() > 1) input.normalize();
+      updateAutoViewDirection(delta);
 
       const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
       const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
@@ -729,6 +792,9 @@
       for (const p of queuePeople) {
         pushApart(player, p, enteringThroughDoor ? 0.34 : 0.48, enteringThroughDoor ? 0.06 : 0.18);
       }
+      for (const p of rushPeople) {
+        pushApart(player, p, enteringThroughDoor ? 0.24 : 0.36, enteringThroughDoor ? 0.025 : 0.07);
+      }
       for (const p of packedPeople) {
         if (!p.visible) continue;
         if (!boarded && enteringThroughDoor) continue;
@@ -759,7 +825,27 @@
       }
     }
 
+    function lerpAngle(from, to, amount) {
+      let diff = (to - from + Math.PI) % (Math.PI * 2) - Math.PI;
+      if (diff < -Math.PI) diff += Math.PI * 2;
+      return from + diff * amount;
+    }
+
+    function updateAutoViewDirection(delta) {
+      const target = tmpVec.set(doorX, 0, trainDoorZ);
+      if (player.position.x < platformEdgeX + 0.25 || state.phase === 'boarding' || state.phase === 'closing' || boarded) {
+        target.set(-6.35, 0, trainDoorZ);
+      }
+      const dx = target.x - player.position.x;
+      const dz = target.z - player.position.z;
+      if (Math.hypot(dx, dz) > 0.08) {
+        const desiredYaw = Math.atan2(dx, dz);
+        yaw = lerpAngle(yaw, desiredYaw, 1 - Math.exp(-delta * 5.5));
+      }
+    }
+
     function updateCamera() {
+      updateAutoViewDirection(0.016);
       const distance = 4.9;
       const height = 2.65;
       const offset = new THREE.Vector3(
@@ -801,26 +887,6 @@
       if (event.code === 'Space') beginGame();
     });
     window.addEventListener('keyup', (event) => keys.delete(event.code));
-
-    renderer.domElement.addEventListener('pointerdown', (event) => {
-      isDragging = true;
-      lastPointer.x = event.clientX;
-      lastPointer.y = event.clientY;
-      renderer.domElement.setPointerCapture(event.pointerId);
-    });
-    renderer.domElement.addEventListener('pointermove', (event) => {
-      if (!isDragging) return;
-      const dx = event.clientX - lastPointer.x;
-      const dy = event.clientY - lastPointer.y;
-      lastPointer.x = event.clientX;
-      lastPointer.y = event.clientY;
-      yaw -= dx * 0.0045;
-      pitch = THREE.MathUtils.clamp(pitch - dy * 0.0028, -0.65, 0.35);
-    });
-    renderer.domElement.addEventListener('pointerup', (event) => {
-      isDragging = false;
-      if (renderer.domElement.hasPointerCapture(event.pointerId)) renderer.domElement.releasePointerCapture(event.pointerId);
-    });
 
     if (window.nipplejs) {
       const joystick = nipplejs.create({
