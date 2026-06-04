@@ -555,9 +555,10 @@
 
     function createTrain() {
       const group = new THREE.Group();
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.38, metalness: 0.16 });
-      const trimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.34, metalness: 0.04 });
-      const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.08 });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c8, roughness: 0.28, metalness: 0.36 });
+      const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.42, metalness: 0.22 });
+      const tozaiSkyLineMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.34, metalness: 0.08 });
+      const tozaiBlueLineMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.34, metalness: 0.08 });
 
       const exteriorParts = [
         { size: [3.65, 0.18, 30], position: [0, 3.23, 0], material: bodyMat },
@@ -593,11 +594,16 @@
         { z: 0, d: 2.8 }
       ];
       stripeSegments.forEach(({ z, d }) => {
-        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, d), trimMat);
-        stripe.position.set(1.965, 2.42, z);
-        stripe.castShadow = true;
-        stripe.receiveShadow = true;
-        group.add(stripe);
+        [
+          { y: 1.47, height: 0.12, material: tozaiSkyLineMat },
+          { y: 1.29, height: 0.16, material: tozaiBlueLineMat }
+        ].forEach(({ y, height, material }) => {
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.055, height, d), material);
+          stripe.position.set(1.965, y, z);
+          stripe.castShadow = true;
+          stripe.receiveShadow = true;
+          group.add(stripe);
+        });
       });
 
       for (const z of [-12, 12]) {
@@ -642,7 +648,7 @@
 
       const windowMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.08, metalness: 0.02, transparent: true, opacity: 0.72 });
       for (let z = -12; z <= 12; z += 4) {
-        const windowFrame = makeBox(0.1, 1.02, 1.72, 0xe2e8f0, 0.36, 0.04);
+        const windowFrame = makeBox(0.1, 1.02, 1.72, 0xcbd5e1, 0.34, 0.12);
         windowFrame.position.set(1.915, 2.18, z + 1.62);
         group.add(windowFrame);
         const window = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.84, 1.46), windowMat);
@@ -652,7 +658,7 @@
         group.add(window);
       }
 
-      const frameMatColor = 0xf8fafc;
+      const frameMatColor = 0xcbd5e1;
       const doorTopFrame = makeBox(0.12, 0.16, 2.68, frameMatColor, 0.42);
       doorTopFrame.position.set(1.94, 2.42, 0);
       group.add(doorTopFrame);
@@ -662,12 +668,24 @@
         group.add(sideFrame);
       }
 
-      const leftDoor = makeBox(0.13, 2.12, 1.18, 0x0284c7, 0.34, 0.12);
+      const leftDoor = makeBox(0.13, 2.12, 1.18, 0xaeb8c2, 0.3, 0.28);
       leftDoor.position.set(2.02, 1.23, -0.62);
       group.add(leftDoor);
-      const rightDoor = makeBox(0.13, 2.12, 1.18, 0x0284c7, 0.34, 0.12);
+      const rightDoor = makeBox(0.13, 2.12, 1.18, 0xaeb8c2, 0.3, 0.28);
       rightDoor.position.set(2.02, 1.23, 0.62);
       group.add(rightDoor);
+      [leftDoor, rightDoor].forEach((door) => {
+        [
+          { y: 0.24, height: 0.12, material: tozaiSkyLineMat },
+          { y: 0.06, height: 0.16, material: tozaiBlueLineMat }
+        ].forEach(({ y, height, material }) => {
+          const doorStripe = new THREE.Mesh(new THREE.BoxGeometry(0.035, height, 1.08), material);
+          doorStripe.position.set(0.08, y, 0);
+          doorStripe.castShadow = true;
+          doorStripe.receiveShadow = true;
+          door.add(doorStripe);
+        });
+      });
       doors.push({ leftDoor, rightDoor });
 
       const destination = new THREE.Mesh(
