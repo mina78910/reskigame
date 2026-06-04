@@ -177,6 +177,26 @@
       transform: translate(-50%, 0);
     }
 
+    #restart-button {
+      position: fixed;
+      left: 50%;
+      bottom: max(34px, calc(22px + env(safe-area-inset-bottom)));
+      z-index: 18;
+      transform: translateX(-50%);
+      display: none;
+      padding: 15px 24px;
+      border: 0;
+      border-radius: 999px;
+      color: #07111f;
+      background: linear-gradient(135deg, #facc15, #fb923c);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.36);
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    #restart-button.visible { display: block; }
+
     #joystick-zone {
       position: fixed;
       left: 0;
@@ -234,6 +254,7 @@
   <div id="hint">青い人物があなたです。視点は自動で進行方向を見ます。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
   <div id="announcement">まもなくドアが閉まります。ご注意ください。</div>
   <div id="joystick-zone"></div>
+  <button id="restart-button" type="button">もう一度プレイ</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
@@ -245,6 +266,7 @@
     const phaseEl = document.getElementById('phase');
     const messageEl = document.getElementById('message');
     const announcementEl = document.getElementById('announcement');
+    const restartButton = document.getElementById('restart-button');
     const timerEl = document.getElementById('timer');
 
     const scene = new THREE.Scene();
@@ -719,6 +741,7 @@
         state.phase = 'failed';
         phaseEl.textContent = '乗車失敗';
         messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        showRestartButton();
         return;
       }
 
@@ -726,6 +749,7 @@
         state.phase = 'boarded';
         phaseEl.textContent = '乗車完了';
         messageEl.textContent = 'ドアが閉まりきった。あなたは車内側にいるので乗車完了。';
+        showRestartButton();
         return;
       }
 
@@ -750,12 +774,14 @@
           phaseEl.textContent = '乗車完了';
           document.body.classList.remove('failed');
           messageEl.textContent = 'ドアが閉まりきった。あなたは車内側にいるので乗車完了。';
+          showRestartButton();
         } else {
           failed = true;
           state.phase = 'failed';
           document.body.classList.add('failed');
           phaseEl.textContent = '乗車失敗';
           messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+          showRestartButton();
         }
         return;
       }
@@ -906,17 +932,10 @@
     }
 
     function updateAutoView(delta) {
-      const lookTarget = tmpVec.set(-5.65, 0, trainDoorZ);
-      if (insideTrain || player.position.x < -5.05) {
-        lookTarget.set(-6.65, 0, THREE.MathUtils.clamp(player.position.z, -6.2, -2.8));
-      } else if (failed) {
-        lookTarget.set(platformEdgeX + 0.9, 0, trainDoorZ);
-      }
-      const dx = lookTarget.x - player.position.x;
-      const dz = lookTarget.z - player.position.z;
-      if (Math.hypot(dx, dz) > 0.001) {
-        yaw = lerpAngle(yaw, Math.atan2(dx, dz), 1 - Math.exp(-delta * 3.6));
-      }
+      // 開始直後はドア方向へ斜めに振らず、プレイヤーの真正面（ホームの列が進む方向）を見る。
+      // 車内に押し込めた後だけ、進行方向を車内奥へ切り替える。
+      const targetYaw = insideTrain || player.position.x < -5.05 ? -Math.PI / 2 : Math.PI;
+      yaw = lerpAngle(yaw, targetYaw, 1 - Math.exp(-delta * 5.2));
       pitch = THREE.MathUtils.lerp(pitch, -0.14, 1 - Math.exp(-delta * 4));
     }
 
@@ -953,6 +972,14 @@
       renderer.render(scene, camera);
     }
 
+    function showRestartButton() {
+      restartButton.classList.add('visible');
+    }
+
+    function restartGame() {
+      window.location.reload();
+    }
+
     function beginGame() {
       if (started) return;
       started = true;
@@ -963,9 +990,15 @@
 
     startScreen.addEventListener('click', beginGame);
     startScreen.addEventListener('touchstart', beginGame, { passive: true });
+    restartButton.addEventListener('click', restartGame);
+    restartButton.addEventListener('touchstart', (event) => {
+      event.stopPropagation();
+      restartGame();
+    }, { passive: true });
 
     window.addEventListener('keydown', (event) => {
       keys.add(event.code);
+      if (event.code === 'Space' && (boarded || failed)) restartGame();
       if (event.code === 'Space') beginGame();
     });
     window.addEventListener('keyup', (event) => keys.delete(event.code));
