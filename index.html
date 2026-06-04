@@ -438,9 +438,11 @@
       scene.add(ceiling);
 
       for (let z = -35; z <= 24; z += 10) {
-        const pillar = makeBox(0.58, 4.15, 0.58, 0x475569, 0.72);
-        pillar.position.set(3.45, 2.02, z);
-        scene.add(pillar);
+        if (Math.abs(z - trainDoorZ) > 1.2) {
+          const pillar = makeBox(0.58, 4.15, 0.58, 0x475569, 0.72);
+          pillar.position.set(3.45, 2.02, z);
+          scene.add(pillar);
+        }
 
         const lightPanel = makeBox(3.2, 0.045, 0.48, 0xe0f2fe, 0.2);
         lightPanel.position.set(0.45, 4.2, z + 2.7);
@@ -668,6 +670,11 @@
           0,
           trainDoorZ + (Math.random() - 0.5) * 2.45
         );
+        p.userData.boardOffset = new THREE.Vector3(
+          -5.45 - Math.random() * 0.5,
+          0,
+          trainDoorZ - 0.95 + (i % 6) * 0.36
+        );
         p.userData.rushDelay = 3.6 + Math.random() * 1.6;
         scene.add(p);
         latePassengers.push(p);
@@ -730,9 +737,16 @@
         }
         const closingScatter = state.phase === 'closing' || state.phase === 'failed';
         const target = tmpVec.copy(p.userData.doorOffset);
+        if (!closingScatter && elapsed > p.userData.rushDelay + 1.2) {
+          target.copy(p.userData.boardOffset);
+        }
         if (closingScatter) {
-          target.x = platformEdgeX + 0.85 + (i % 4) * 0.28;
-          target.z = trainDoorZ + (i - 8.5) * 0.42;
+          if (isPassengerInsideTrain(p)) {
+            target.copy(p.userData.boardOffset);
+          } else {
+            target.x = platformEdgeX + 0.85 + (i % 4) * 0.28;
+            target.z = trainDoorZ + (i - 8.5) * 0.42;
+          }
         }
         const dx = target.x - p.position.x;
         const dz = target.z - p.position.z;
@@ -755,6 +769,10 @@
 
     function isPlayerInsideTrain() {
       return player.position.x < -5.05 && Math.abs(player.position.z - trainDoorZ) < 2.25;
+    }
+
+    function isPassengerInsideTrain(passenger) {
+      return passenger.position.x < -5.05 && Math.abs(passenger.position.z - trainDoorZ) < 2.45;
     }
 
     function updatePhase() {
@@ -930,7 +948,7 @@
     }
 
     function blockPassengerBehindPlayer(passenger, gap, laneWidth) {
-      if (failed) return;
+      if (failed || insideTrain || state.phase === 'closing' || state.phase === 'boarded') return;
       const sameDoorLane = Math.abs(passenger.position.z - player.position.z) < laneWidth;
       const passengerIsBehindPlayer = passenger.position.x > player.position.x;
       const wouldOvertakePlayer = passenger.position.x < player.position.x + gap;
