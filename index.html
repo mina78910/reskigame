@@ -443,6 +443,9 @@
     const platformWallX = 5.05;
     const trainFloorX = -5.25;
     const trainInteriorWallX = -8.45;
+    const trainInteriorDoorX = -5.05;
+    const trainInteriorPadding = 0.22;
+    const trainPackedCapacity = 96;
     const trainDepartureStopZ = 20;
     const trainDoorPassageHalfWidth = 0.95;
     const trainDoorZ = -4.7;
@@ -864,7 +867,7 @@
 
     function createPackedCar() {
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
-      for (let i = 0; i < 96; i++) {
+      for (let i = 0; i < trainPackedCapacity; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
         const row = Math.floor(i / 16);
         const col = i % 16;
@@ -965,11 +968,11 @@
     }
 
     function isPlayerInsideTrain() {
-      return player.position.x < -5.05 && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
+      return player.position.x < trainInteriorDoorX && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
     }
 
     function isPassengerInsideTrain(passenger) {
-      return passenger.position.x < -5.05 && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
+      return passenger.position.x < trainInteriorDoorX && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
     }
 
     function isAtOpenTrainDoor(position, margin = 0) {
@@ -979,10 +982,16 @@
     function constrainPassengerBoardingPath(passenger) {
       const previousX = passenger.userData.prevX ?? passenger.position.x;
       const crossedPlatformEdge = previousX >= platformEdgeX && passenger.position.x < platformEdgeX;
-      const betweenTrainAndPlatform = passenger.position.x < platformEdgeX && passenger.position.x > -5.05;
+      const betweenTrainAndPlatform = passenger.position.x < platformEdgeX && passenger.position.x > trainInteriorDoorX;
       if ((crossedPlatformEdge || betweenTrainAndPlatform) && !isAtOpenTrainDoor(passenger.position, 0.12)) {
         passenger.position.x = platformEdgeX;
       }
+    }
+
+    function constrainPassengerToTrainInterior(passenger, padding = trainInteriorPadding) {
+      const insideCarLength = Math.abs(passenger.position.z - currentTrainDoorZ()) < 14.25;
+      if (!insideCarLength || passenger.position.x >= trainInteriorDoorX) return;
+      passenger.position.x = THREE.MathUtils.clamp(passenger.position.x, trainInteriorWallX + padding, trainInteriorDoorX - padding);
     }
 
     function pullDoorCrowdInsideTrain(includePlayer = false) {
@@ -1119,6 +1128,7 @@
       packedPeople.forEach((p, i) => {
         p.position.y = 0.06 + Math.sin(state.crowdPulse * 4.5 + i * 0.77) * 0.025;
         p.rotation.z = Math.sin(state.crowdPulse * 2.4 + i) * 0.035;
+        constrainPassengerToTrainInterior(p);
       });
     }
 
@@ -1128,10 +1138,10 @@
         if (p.visible) p.position.z += deltaZ;
       }
       for (const p of queuePeople) {
-        if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
+        if (isPassengerInsideTrain(p) || p.position.x < trainInteriorDoorX) p.position.z += deltaZ;
       }
       for (const p of latePassengers) {
-        if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
+        if (isPassengerInsideTrain(p) || p.position.x < trainInteriorDoorX) p.position.z += deltaZ;
       }
       if (boarded || isPlayerInsideTrain()) {
         player.position.z += deltaZ;
@@ -1185,7 +1195,7 @@
         player.userData.velocity.x = Math.max(0, player.userData.velocity.x);
       }
 
-      if (player.position.x < -5.05) {
+      if (player.position.x < trainInteriorDoorX) {
         // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
         // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
         player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
@@ -1225,6 +1235,12 @@
       }
       for (const passenger of visiblePacked) {
         applyPassengerContact(passenger, insideTrain ? 0.38 : 0.42, 0.08, insideTrain ? 0.1 : 0.08);
+      }
+      for (const passenger of movingPassengers) {
+        constrainPassengerToTrainInterior(passenger);
+      }
+      for (const passenger of visiblePacked) {
+        constrainPassengerToTrainInterior(passenger);
       }
       constrainPlayer();
     }
