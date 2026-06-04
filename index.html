@@ -275,6 +275,7 @@
     let pitch = -0.18;
     let announcementPlayed = false;
     let mobileMove = { x: 0, y: 0 };
+    let insideTrain = false;
     let boarded = false;
     let failed = false;
 
@@ -501,9 +502,14 @@
       destination.rotation.y = Math.PI / 2;
       group.add(destination);
 
-      const doorLight = new THREE.PointLight(0xe0f2fe, 1.35, 10);
-      doorLight.position.set(1.25, 2.35, 0);
-      group.add(doorLight);
+      for (const z of [-3.2, 3.2]) {
+        const cabinLight = new THREE.PointLight(0xe0f2fe, 0.42, 6.5);
+        cabinLight.position.set(-0.32, 2.72, z);
+        group.add(cabinLight);
+        const lightPanel = makeBox(0.34, 0.025, 1.35, 0xf8fafc, 0.18);
+        lightPanel.position.set(-0.22, 2.96, z);
+        group.add(lightPanel);
+      }
 
       group.position.x = trainFloorX - 1.84;
       return group;
@@ -655,7 +661,7 @@
     }
 
     function updateQueue(delta) {
-      const canBoard = state.phase === 'boarding' || state.phase === 'boarded';
+      const canBoard = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'inside' || state.phase === 'boarded';
       queuePeople.forEach((p, i) => {
         const phaseOffset = Math.max(0, elapsed - 8.2 - i * 0.54);
         if (canBoard && phaseOffset > 0) {
@@ -715,6 +721,13 @@
         return;
       }
 
+      if (boarded) {
+        state.phase = 'boarded';
+        phaseEl.textContent = '乗車完了';
+        messageEl.textContent = 'ドアが閉まり、あなたは車内に残れた。乗車完了。';
+        return;
+      }
+
       if (elapsed < 5) {
         state.phase = 'waiting';
         phaseEl.textContent = '発車前のホーム';
@@ -737,24 +750,38 @@
         return;
       }
 
-      if (!boarded && elapsed >= 22) {
-        failed = true;
-        state.phase = 'failed';
-        document.body.classList.add('failed');
-        phaseEl.textContent = '乗車失敗';
-        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+      if (elapsed >= 22) {
+        if (insideTrain) {
+          boarded = true;
+          state.phase = 'boarded';
+          phaseEl.textContent = '乗車完了';
+          document.body.classList.remove('failed');
+          messageEl.textContent = 'ドアが閉まり、あなたは車内に残れた。乗車完了。';
+        } else {
+          failed = true;
+          state.phase = 'failed';
+          document.body.classList.add('failed');
+          phaseEl.textContent = '乗車失敗';
+          messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        }
         return;
       }
 
-      if (!boarded && elapsed >= 19.5) {
+      if (elapsed >= 19.5) {
         state.phase = 'closing';
         phaseEl.textContent = 'ドア閉扉中';
         showClosingAnnouncement();
-        messageEl.textContent = 'アナウンスが流れ、ドアが閉まりはじめた。乗れていないとホームに取り残される。';
+        messageEl.textContent = insideTrain
+          ? 'アナウンスが流れ、ドアが閉まりはじめた。このまま車内にいれば乗車完了だ。'
+          : 'アナウンスが流れ、ドアが閉まりはじめた。乗れていないとホームに取り残される。';
         return;
       }
 
-      if (!boarded) {
+      if (insideTrain) {
+        state.phase = 'inside';
+        phaseEl.textContent = '車内に入った';
+        messageEl.textContent = 'まだ乗車完了ではない。ドアが閉まるまで車内に留まろう。';
+      } else {
         state.phase = 'boarding';
         phaseEl.textContent = '乗車中';
         messageEl.textContent = 'あなたは最後尾。乗れない乗客もドアへ集まりはじめた。歩き続けて車内へ押し込もう。';
@@ -781,7 +808,7 @@
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
       }
-      const doorTarget = !boarded && elapsed >= 19.5 ? 0 : (elapsed >= 8.2 ? 1 : 0);
+      const doorTarget = elapsed >= 19.5 ? 0 : (elapsed >= 8.2 ? 1 : 0);
       state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, doorTarget, doorTarget > state.doorsOpen ? 3.2 : 4.8, delta);
       state.rumble = Math.max(0, state.rumble - delta * 0.6);
       state.crowdPulse += delta;
@@ -812,19 +839,19 @@
         player.rotation.y = Math.atan2(desired.x, desired.z);
       }
 
-      const speed = boarded ? 1.05 : 2.15;
+      const speed = insideTrain || boarded ? 1.05 : 2.15;
       player.userData.velocity.lerp(desired.multiplyScalar(speed), 1 - Math.exp(-delta * 9));
       player.position.addScaledVector(player.userData.velocity, delta);
 
       constrainPlayer();
       animatePlayer(delta, input.length());
 
-      if (!boarded && !failed && state.phase === 'boarding' && player.position.x < -5.18 && Math.abs(player.position.z - trainDoorZ) < 2.2) {
-        boarded = true;
-        state.phase = 'boarded';
-        phaseEl.textContent = '乗車完了';
-        document.body.classList.remove('failed');
-        messageEl.textContent = '最後尾のあなたも乗車完了。身動きはほとんどできないが、どうにかドアの内側に収まった。';
+      const canStepInside = (state.phase === 'boarding' || state.phase === 'closing') && state.doorsOpen > 0.25;
+      if (!insideTrain && !failed && canStepInside && player.position.x < -5.18 && Math.abs(player.position.z - trainDoorZ) < 2.2) {
+        insideTrain = true;
+        state.phase = 'inside';
+        phaseEl.textContent = '車内に入った';
+        messageEl.textContent = '車内に入った。乗車完了は、ドアが閉まってから判定される。';
       }
     }
 
@@ -843,7 +870,7 @@
       if (player.position.x < platformEdgeX && state.doorsOpen < 0.65) player.position.x = platformEdgeX;
 
       const atDoor = Math.abs(player.position.z - trainDoorZ) < 1.7;
-      if (player.position.x < platformEdgeX && !atDoor && !boarded) {
+      if (player.position.x < platformEdgeX && !atDoor && !insideTrain) {
         player.position.x = platformEdgeX;
       }
 
@@ -853,7 +880,7 @@
         player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
       }
 
-      const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
+      const enteringThroughDoor = atDoor && state.doorsOpen >= 0.25 && !failed && !boarded;
       for (const p of queuePeople) {
         pushApart(player, p, enteringThroughDoor ? 0.34 : 0.48, enteringThroughDoor ? 0.06 : 0.18);
       }
@@ -862,8 +889,8 @@
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (!boarded && enteringThroughDoor) continue;
-        pushApart(player, p, boarded ? 0.28 : 0.38, boarded ? 0.035 : 0.08);
+        if (!insideTrain && enteringThroughDoor) continue;
+        pushApart(player, p, insideTrain || boarded ? 0.28 : 0.38, insideTrain || boarded ? 0.035 : 0.08);
       }
     }
 
@@ -892,7 +919,7 @@
 
     function updateAutoView(delta) {
       const lookTarget = tmpVec.set(-5.65, 0, trainDoorZ);
-      if (boarded || player.position.x < -5.05) {
+      if (insideTrain || boarded || player.position.x < -5.05) {
         lookTarget.set(-6.65, 0, THREE.MathUtils.clamp(player.position.z, -6.2, -2.8));
       } else if (failed) {
         lookTarget.set(platformEdgeX + 0.9, 0, trainDoorZ);
