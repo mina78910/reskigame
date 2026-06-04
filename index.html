@@ -145,6 +145,13 @@
       font-weight: 800;
     }
 
+    .failed #phase,
+    .failed #message {
+      border-color: rgba(248, 113, 113, 0.58);
+      background: rgba(127, 29, 29, 0.78);
+      color: #fff7ed;
+    }
+
     #joystick-zone {
       position: fixed;
       left: 0;
@@ -242,6 +249,7 @@
     let lastPointer = { x: 0, y: 0 };
     let mobileMove = { x: 0, y: 0 };
     let boarded = false;
+    let failed = false;
 
     const state = {
       trainZ: -45,
@@ -436,39 +444,91 @@
     function createPerson({ jacket = 0x64748b, pants = 0x334155, skin = 0xf7c59f, bag = false, scale = 1, hair = 0x111827 } = {}) {
       const group = new THREE.Group();
       group.scale.setScalar(scale);
-      const body = makeBox(0.46, 0.82, 0.28, jacket, 0.72);
-      body.position.y = 1.02;
-      group.add(body);
 
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 16), new THREE.MeshStandardMaterial({ color: skin, roughness: 0.62 }));
-      head.position.y = 1.6;
+      const jacketMat = new THREE.MeshStandardMaterial({ color: jacket, roughness: 0.72 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: pants, roughness: 0.82 });
+      const skinMat = new THREE.MeshStandardMaterial({ color: skin, roughness: 0.62 });
+      const hairMat = new THREE.MeshStandardMaterial({ color: hair, roughness: 0.86 });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.72 });
+
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.32, 0.78, 10), jacketMat);
+      torso.position.y = 1.03;
+      torso.scale.z = 0.58;
+      torso.castShadow = true;
+      torso.receiveShadow = true;
+      group.add(torso);
+
+      const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.74, 10), jacketMat);
+      shoulder.position.y = 1.34;
+      shoulder.rotation.z = Math.PI / 2;
+      shoulder.castShadow = true;
+      group.add(shoulder);
+
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, 0.12, 12), skinMat);
+      neck.position.y = 1.45;
+      neck.castShadow = true;
+      group.add(neck);
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.225, 24, 18), skinMat);
+      head.position.y = 1.66;
+      head.scale.set(0.92, 1.08, 0.86);
       head.castShadow = true;
       group.add(head);
 
-      const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(0.225, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.54), new THREE.MeshStandardMaterial({ color: hair, roughness: 0.8 }));
-      hairMesh.position.y = 1.67;
-      hairMesh.rotation.x = -0.2;
+      const hairMesh = new THREE.Mesh(new THREE.SphereGeometry(0.235, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.56), hairMat);
+      hairMesh.position.y = 1.75;
+      hairMesh.rotation.x = -0.18;
+      hairMesh.scale.z = 0.92;
       hairMesh.castShadow = true;
       group.add(hairMesh);
 
+      for (const x of [-0.065, 0.065]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.4 }));
+        eye.position.set(x, 1.67, -0.19);
+        group.add(eye);
+      }
+
+      const mask = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.08, 0.018), new THREE.MeshStandardMaterial({ color: 0xe0f2fe, roughness: 0.7 }));
+      mask.position.set(0, 1.59, -0.205);
+      group.add(mask);
+
       const limbs = { legs: [], arms: [] };
-      for (const x of [-0.18, 0.18]) {
-        const leg = makeBox(0.15, 0.72, 0.15, pants, 0.8);
-        leg.position.set(x, 0.36, 0);
+      for (const x of [-0.17, 0.17]) {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.075, 0.68, 10), pantsMat);
+        leg.position.set(x, 0.42, 0);
+        leg.castShadow = true;
+        leg.receiveShadow = true;
         group.add(leg);
         limbs.legs.push(leg);
-        const arm = makeBox(0.12, 0.68, 0.12, jacket, 0.78);
-        arm.position.set(x * 1.62, 0.98, 0.01);
-        arm.rotation.z = -x * 0.22;
+
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.075, 0.28), shoeMat);
+        shoe.position.set(x, 0.055, -0.045);
+        shoe.castShadow = true;
+        group.add(shoe);
+
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.06, 0.62, 10), jacketMat);
+        arm.position.set(x * 2.08, 1.0, 0.01);
+        arm.rotation.z = -x * 0.7;
+        arm.castShadow = true;
         group.add(arm);
         limbs.arms.push(arm);
+
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), skinMat);
+        hand.position.set(x * 2.42, 0.68, -0.015);
+        hand.castShadow = true;
+        group.add(hand);
       }
       group.userData.limbs = limbs;
 
       if (bag) {
-        const bagMesh = makeBox(0.34, 0.48, 0.16, 0x111827, 0.82);
-        bagMesh.position.set(-0.36, 0.92, 0.02);
+        const bagMesh = makeBox(0.36, 0.5, 0.18, 0x111827, 0.82);
+        bagMesh.position.set(-0.38, 0.96, 0.08);
+        bagMesh.rotation.z = -0.08;
         group.add(bagMesh);
+        const strap = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.014, 8, 24, Math.PI), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 }));
+        strap.position.set(-0.18, 1.1, -0.08);
+        strap.rotation.set(Math.PI / 2, 0.15, -0.62);
+        group.add(strap);
       }
       return group;
     }
@@ -536,6 +596,13 @@
     }
 
     function updatePhase() {
+      if (failed) {
+        state.phase = 'failed';
+        phaseEl.textContent = '乗車失敗';
+        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        return;
+      }
+
       if (elapsed < 5) {
         state.phase = 'waiting';
         phaseEl.textContent = '発車前のホーム';
@@ -558,6 +625,22 @@
         return;
       }
 
+      if (!boarded && elapsed >= 22) {
+        failed = true;
+        state.phase = 'failed';
+        document.body.classList.add('failed');
+        phaseEl.textContent = '乗車失敗';
+        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        return;
+      }
+
+      if (!boarded && elapsed >= 19.5) {
+        state.phase = 'closing';
+        phaseEl.textContent = 'ドア閉扉中';
+        messageEl.textContent = '発車ベルが鳴り、ドアが閉まりはじめた。乗れていないと失敗になる。';
+        return;
+      }
+
       if (!boarded) {
         state.phase = 'boarding';
         phaseEl.textContent = '乗車中';
@@ -570,7 +653,8 @@
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
       }
-      if (elapsed >= 8.2) state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, 1, 3.2, delta);
+      const doorTarget = !boarded && elapsed >= 19.5 ? 0 : (elapsed >= 8.2 ? 1 : 0);
+      state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, doorTarget, doorTarget > state.doorsOpen ? 3.2 : 4.8, delta);
       state.rumble = Math.max(0, state.rumble - delta * 0.6);
       state.crowdPulse += delta;
       train.position.x = trainFloorX - 1.84 + Math.sin(elapsed * 33) * state.rumble * 0.018;
@@ -593,7 +677,7 @@
       if (input.length() > 1) input.normalize();
 
       const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
-      const right = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
+      const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
       const desired = new THREE.Vector3().addScaledVector(forward, input.y).addScaledVector(right, input.x);
       if (desired.lengthSq() > 0.001) {
         desired.normalize();
@@ -607,16 +691,19 @@
       constrainPlayer();
       animatePlayer(delta, input.length());
 
-      if (!boarded && state.phase === 'boarding' && player.position.x < -5.18 && Math.abs(player.position.z - trainDoorZ) < 2.2) {
+      if (!boarded && !failed && state.phase === 'boarding' && player.position.x < -5.18 && Math.abs(player.position.z - trainDoorZ) < 2.2) {
         boarded = true;
         state.phase = 'boarded';
         phaseEl.textContent = '乗車完了';
+        document.body.classList.remove('failed');
         messageEl.textContent = '最後尾のあなたも乗車完了。身動きはほとんどできないが、どうにかドアの内側に収まった。';
       }
     }
 
     function constrainPlayer() {
-      if (state.phase === 'waiting' || state.phase === 'arriving') {
+      if (failed) {
+        player.position.x = THREE.MathUtils.clamp(player.position.x, -3.45, 5.6);
+      } else if (state.phase === 'waiting' || state.phase === 'arriving') {
         player.position.x = THREE.MathUtils.clamp(player.position.x, -3.35, 5.6);
       } else if (state.doorsOpen < 0.55) {
         player.position.x = THREE.MathUtils.clamp(player.position.x, -3.45, 5.6);
@@ -740,8 +827,11 @@
       });
       joystick.on('move', (_evt, data) => {
         const force = Math.min(data.force || 0, 1);
-        mobileMove.x = Math.cos(data.angle.radian) * force;
-        mobileMove.y = Math.sin(data.angle.radian) * force;
+        const angle = data.angle ? data.angle.radian : 0;
+        const screenX = Math.cos(angle) * force;
+        const screenY = Math.sin(angle) * force;
+        mobileMove.x = screenX;
+        mobileMove.y = screenY;
       });
       joystick.on('end', () => {
         mobileMove.x = 0;
