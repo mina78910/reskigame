@@ -793,13 +793,15 @@
       queuePeople.forEach((p, i) => {
         const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
+          const previousX = p.position.x;
+          const previousZ = p.position.z;
           const t = Math.min(1, phaseOffset / 4.2);
           const startX = platformEdgeX + 1.25 + i * 0.38;
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = Math.PI / 2;
-          blockPassengerBehindPlayer(p, 0.48, 0.78);
-          applyPassengerContact(p, 0.52, 0.26, 0.2);
+          blockPassengerBehindPlayer(p, 0.5, 0.86, previousX, previousZ);
+          applyPassengerContact(p, 0.54, 0.28, 0.22);
         }
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
@@ -833,6 +835,8 @@
             target.z = trainDoorZ + (i - 8.5) * 0.42;
           }
         }
+        const previousX = p.position.x;
+        const previousZ = p.position.z;
         const dx = target.x - p.position.x;
         const dz = target.z - p.position.z;
         const dist = Math.hypot(dx, dz);
@@ -842,8 +846,8 @@
           p.position.z += (dz / dist) * step;
           p.rotation.y = Math.atan2(-dx, -dz);
         }
-        blockPassengerBehindPlayer(p, 0.44, 0.92);
-        applyPassengerContact(p, 0.5, 0.22, 0.22);
+        blockPassengerBehindPlayer(p, 0.48, 1.0, previousX, previousZ);
+        applyPassengerContact(p, 0.52, 0.24, 0.24);
         p.position.y = Math.sin(elapsed * 7 + i) * 0.018;
       });
     }
@@ -1101,13 +1105,20 @@
       return true;
     }
 
-    function blockPassengerBehindPlayer(passenger, gap, laneWidth) {
-      if (failed || insideTrain || state.phase === 'closing' || state.phase === 'boarded') return;
-      const sameDoorLane = Math.abs(passenger.position.z - player.position.z) < laneWidth;
-      const passengerIsBehindPlayer = passenger.position.x > player.position.x;
-      const wouldOvertakePlayer = passenger.position.x < player.position.x + gap;
-      if (sameDoorLane && passengerIsBehindPlayer && wouldOvertakePlayer) {
-        passenger.position.x = Math.min(platformWallX - 0.45, player.position.x + gap);
+    function blockPassengerBehindPlayer(passenger, gap, laneWidth, previousX = passenger.position.x, previousZ = passenger.position.z) {
+      if (failed || state.phase === 'boarded') return;
+      const sameDoorLaneNow = Math.abs(passenger.position.z - player.position.z) < laneWidth;
+      const sameDoorLaneBefore = Math.abs(previousZ - player.position.z) < laneWidth;
+      const sameDoorLane = sameDoorLaneNow || sameDoorLaneBefore;
+      const blockingX = player.position.x + gap;
+      const wasBehindPlayer = previousX >= blockingX;
+      const isBehindPlayer = passenger.position.x >= player.position.x;
+      const crossedThroughPlayer = wasBehindPlayer && passenger.position.x < blockingX;
+      const crowdingFromBehind = isBehindPlayer && passenger.position.x < blockingX;
+
+      if (sameDoorLane && (crossedThroughPlayer || crowdingFromBehind)) {
+        passenger.position.x = Math.min(platformWallX - 0.45, blockingX);
+        passenger.position.z = THREE.MathUtils.lerp(passenger.position.z, player.position.z, 0.18);
         passenger.userData.blockedByPlayer = true;
       } else {
         passenger.userData.blockedByPlayer = false;
