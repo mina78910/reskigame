@@ -216,11 +216,12 @@
 
     #joystick-zone {
       position: fixed;
-      left: 0;
-      bottom: 0;
+      left: 50%;
+      top: 58%;
       z-index: 9;
       width: min(46vw, 230px);
       height: min(42vh, 230px);
+      transform: translate(-50%, -50%);
       touch-action: none;
       display: none;
     }
@@ -1254,11 +1255,10 @@
 
     if (window.nipplejs) {
       const joystickSize = Math.max(86, Math.min(118, window.innerWidth * 0.28));
-      const joystickOffset = `${Math.round(joystickSize * 0.74)}px`;
       const joystick = nipplejs.create({
         zone: document.getElementById('joystick-zone'),
         mode: 'static',
-        position: { left: joystickOffset, bottom: joystickOffset },
+        position: { left: '50%', top: '50%' },
         color: '#facc15',
         size: joystickSize
       });
