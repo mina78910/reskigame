@@ -445,6 +445,8 @@
     const trainInteriorWallX = -8.45;
     const trainInteriorDoorX = -5.05;
     const trainInteriorPadding = 0.22;
+    const trainInteriorPassengerHalfZ = 2.25;
+    const trainInteriorPlayerHalfZ = 1.55;
     const trainPackedCapacity = 96;
     const trainDepartureStopZ = 20;
     const trainDoorPassageHalfWidth = 0.95;
@@ -873,7 +875,8 @@
         const col = i % 16;
         const depthLane = col % 6;
         const zLane = Math.floor(col / 6) - 1;
-        p.position.set(trainInteriorWallX + 0.24 + depthLane * 0.48 + Math.random() * 0.12, 0.06, -8.7 + row * 2.35 + zLane * 0.32);
+        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + row * 0.82 + zLane * 0.18 + (Math.random() - 0.5) * 0.12;
+        p.position.set(trainInteriorWallX + 0.24 + depthLane * 0.48 + Math.random() * 0.12, 0.06, crowdedZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
         packedPeople.push(p);
@@ -989,9 +992,11 @@
     }
 
     function constrainPassengerToTrainInterior(passenger, padding = trainInteriorPadding) {
-      const insideCarLength = Math.abs(passenger.position.z - currentTrainDoorZ()) < 14.25;
+      const doorZ = currentTrainDoorZ();
+      const insideCarLength = Math.abs(passenger.position.z - doorZ) < 14.25;
       if (!insideCarLength || passenger.position.x >= trainInteriorDoorX) return;
       passenger.position.x = THREE.MathUtils.clamp(passenger.position.x, trainInteriorWallX + padding, trainInteriorDoorX - padding);
+      passenger.position.z = THREE.MathUtils.clamp(passenger.position.z, doorZ - trainInteriorPassengerHalfZ, doorZ + trainInteriorPassengerHalfZ);
     }
 
     function pullDoorCrowdInsideTrain(includePlayer = false) {
@@ -1198,7 +1203,7 @@
       if (player.position.x < trainInteriorDoorX) {
         // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
         // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
-        player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - trainInteriorPlayerHalfZ, currentTrainDoorZ() + trainInteriorPlayerHalfZ);
       }
 
       const enteringThroughDoor = canPassThroughDoor;
