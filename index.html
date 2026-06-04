@@ -555,16 +555,56 @@
 
     function createTrain() {
       const group = new THREE.Group();
-      const shellMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.45, metalness: 0.18, transparent: true, opacity: 0.34, depthWrite: false });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(3.65, 3.2, 30), shellMat);
-      body.position.set(0, 1.62, 0);
-      body.castShadow = true;
-      body.receiveShadow = true;
-      group.add(body);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.38, metalness: 0.16 });
+      const trimMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.34, metalness: 0.04 });
+      const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.08 });
 
-      const stripe = makeBox(3.72, 0.18, 30.08, 0xffffff, 0.35, 0.05);
-      stripe.position.set(0.02, 2.42, 0);
-      group.add(stripe);
+      const exteriorParts = [
+        { size: [3.65, 0.18, 30], position: [0, 3.23, 0], material: bodyMat },
+        { size: [3.65, 0.2, 30], position: [0, 0.02, 0], material: darkTrimMat },
+        { size: [0.16, 3.05, 30], position: [-1.83, 1.58, 0], material: bodyMat },
+        { size: [3.65, 3.05, 0.18], position: [0, 1.58, -15], material: bodyMat },
+        { size: [3.65, 3.05, 0.18], position: [0, 1.58, 15], material: bodyMat },
+        { size: [0.16, 0.62, 30], position: [1.86, 0.45, 0], material: bodyMat },
+        { size: [0.16, 0.5, 30], position: [1.86, 2.78, 0], material: bodyMat },
+        { size: [0.16, 1.62, 12.2], position: [1.86, 1.62, -8.4], material: bodyMat },
+        { size: [0.16, 1.62, 12.2], position: [1.86, 1.62, 8.4], material: bodyMat }
+      ];
+      exteriorParts.forEach(({ size, position, material }) => {
+        const part = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+        part.position.set(...position);
+        part.castShadow = true;
+        part.receiveShadow = true;
+        group.add(part);
+      });
+
+      const roofRound = new THREE.Mesh(new THREE.CylinderGeometry(1.82, 1.82, 30, 24, 1, false, 0, Math.PI), bodyMat);
+      roofRound.position.set(0, 3.19, 0);
+      roofRound.rotation.z = Math.PI / 2;
+      roofRound.rotation.y = Math.PI / 2;
+      roofRound.scale.y = 0.16;
+      roofRound.castShadow = true;
+      roofRound.receiveShadow = true;
+      group.add(roofRound);
+
+      const stripeSegments = [
+        { z: -8.35, d: 12.25 },
+        { z: 8.35, d: 12.25 },
+        { z: 0, d: 2.8 }
+      ];
+      stripeSegments.forEach(({ z, d }) => {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, d), trimMat);
+        stripe.position.set(1.965, 2.42, z);
+        stripe.castShadow = true;
+        stripe.receiveShadow = true;
+        group.add(stripe);
+      });
+
+      for (const z of [-12, 12]) {
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 10), new THREE.MeshStandardMaterial({ color: 0xfef3c7, emissive: 0xfbbf24, emissiveIntensity: 0.65, roughness: 0.22 }));
+        headlight.position.set(1.92, 1.85, z);
+        group.add(headlight);
+      }
 
       const interiorFloor = makeBox(3.05, 0.08, 28.5, 0xd6d3d1, 0.82);
       interiorFloor.position.set(0.08, 0.08, 0);
@@ -600,9 +640,15 @@
         }
       }
 
+      const windowMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.08, metalness: 0.02, transparent: true, opacity: 0.72 });
       for (let z = -12; z <= 12; z += 4) {
-        const window = makeBox(0.07, 0.88, 1.55, 0x7dd3fc, 0.15, 0.05);
-        window.position.set(1.9, 2.18, z + 1.62);
+        const windowFrame = makeBox(0.1, 1.02, 1.72, 0xe2e8f0, 0.36, 0.04);
+        windowFrame.position.set(1.915, 2.18, z + 1.62);
+        group.add(windowFrame);
+        const window = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.84, 1.46), windowMat);
+        window.position.set(1.965, 2.18, z + 1.62);
+        window.castShadow = true;
+        window.receiveShadow = true;
         group.add(window);
       }
 
