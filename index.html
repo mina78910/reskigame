@@ -217,7 +217,7 @@
     <div class="start-card">
       <p class="eyebrow">TOZAI LINE QUEUE</p>
       <h1>東西線<br>最後尾乗車</h1>
-      <p class="lead">ホームの行列の最後尾からスタート。約5秒後、とんでもなく窮屈な電車が到着します。自分の分身を操作して、列の流れに合わせて乗車してください。</p>
+      <p class="lead">ホームの行列の最後尾からスタート。ゲーム開始と同時に、とんでもなく窮屈な電車がホームへ入ってきます。自分の分身を操作して、列の流れに合わせて乗車してください。</p>
       <div class="start-button">クリック / タップで開始 →</div>
       <div class="controls">
         <span>WASD / 矢印：移動</span>
@@ -228,8 +228,8 @@
   </div>
 
   <div id="hud">
-    <div id="phase">発車前のホーム</div>
-    <div id="message">黄色い線の内側で、東西線の行列最後尾に並んでいる。到着まで <span id="timer">5.0</span> 秒。</div>
+    <div id="phase">電車入線中</div>
+    <div id="message">東西線がすぐにホームへ入ってくる。列の最後尾からドアへ向かおう。</div>
   </div>
   <div id="hint">青い人物があなたです。視点は自動で進行方向を見ます。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
   <div id="announcement">まもなくドアが閉まります。ご注意ください。</div>
@@ -280,7 +280,7 @@
     let failed = false;
 
     const state = {
-      trainZ: -45,
+      trainZ: -30,
       trainTargetZ: -4.7,
       doorsOpen: 0,
       rumble: 0,
@@ -627,7 +627,7 @@
           0,
           trainDoorZ + (Math.random() - 0.5) * 2.45
         );
-        p.userData.rushDelay = 8.3 + Math.random() * 1.8;
+        p.userData.rushDelay = 3.6 + Math.random() * 1.6;
         scene.add(p);
         latePassengers.push(p);
       }
@@ -658,7 +658,7 @@
     function updateQueue(delta) {
       const canBoard = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'boarded';
       queuePeople.forEach((p, i) => {
-        const phaseOffset = Math.max(0, elapsed - 8.2 - i * 0.54);
+        const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
           const t = Math.min(1, phaseOffset / 4.2);
           p.position.x = THREE.MathUtils.lerp(doorX, -5.55, easeInOut(t));
@@ -668,13 +668,13 @@
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
 
-      if (state.phase === 'waiting') {
+      if (state.phase === 'arriving') {
         const queueEnd = 8.0;
         const dx = player.position.x - doorX;
         const dz = player.position.z - queueEnd;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.3) {
-          messageEl.innerHTML = `まだ列から外れすぎないで。到着まで <span id="timer">${Math.max(0, 5 - elapsed).toFixed(1)}</span> 秒。`;
+          messageEl.textContent = '列から外れすぎないで。電車はもうホームへ入ってきている。';
         }
       }
     }
@@ -729,29 +729,21 @@
         return;
       }
 
-      if (elapsed < 5) {
-        state.phase = 'waiting';
-        phaseEl.textContent = '発車前のホーム';
-        const left = Math.max(0, 5 - elapsed).toFixed(1);
-        messageEl.innerHTML = `黄色い線の内側で、東西線の行列最後尾に並んでいる。到着まで <span id="timer">${left}</span> 秒。`;
-        return;
-      }
-
-      if (elapsed < 8.1) {
+      if (elapsed < 3.1) {
         state.phase = 'arriving';
-        phaseEl.textContent = '電車が入線中';
-        messageEl.textContent = '東西線がホームに滑り込んできた。窓の向こうはすでに肩が触れ合うほどぎゅうぎゅうだ。';
+        phaseEl.textContent = '電車入線中';
+        messageEl.textContent = '東西線がすぐにホームへ滑り込んでくる。列の最後尾からドアへ向かおう。';
         return;
       }
 
-      if (elapsed < 9.2) {
+      if (elapsed < 4.2) {
         state.phase = 'doors';
         phaseEl.textContent = 'ドア開扉';
         messageEl.textContent = 'ドアが開いた。乗客が一斉にドアへ集中し、列の流れがぎゅっと詰まっていく。';
         return;
       }
 
-      if (elapsed >= 22) {
+      if (elapsed >= 17) {
         if (insideTrain) {
           boarded = true;
           state.phase = 'boarded';
@@ -768,7 +760,7 @@
         return;
       }
 
-      if (elapsed >= 19.5) {
+      if (elapsed >= 14.5) {
         state.phase = 'closing';
         phaseEl.textContent = 'ドア閉扉中';
         showClosingAnnouncement();
@@ -782,7 +774,7 @@
       phaseEl.textContent = insideTrain ? '車内に押し込み中' : '乗車中';
       messageEl.textContent = insideTrain
         ? '車内側まで入った。まだ乗車完了ではない。ドアが閉まるまで内側に踏みとどまろう。'
-        : 'あなたは最後尾。乗れない乗客もドアへ集まりはじめた。歩き続けて車内へ押し込もう。';
+        : '他の客とぶつかると進みにくい。隙間を探しながらドアへ押し込もう。';
     }
 
     function showClosingAnnouncement() {
@@ -801,11 +793,11 @@
     }
 
     function updateTrain(delta) {
-      if (elapsed >= 5 && state.trainZ < state.trainTargetZ) {
+      if (state.trainZ < state.trainTargetZ) {
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
       }
-      const doorTarget = elapsed >= 19.5 ? 0 : (elapsed >= 8.2 ? 1 : 0);
+      const doorTarget = elapsed >= 14.5 ? 0 : (elapsed >= 3.3 ? 1 : 0);
       state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, doorTarget, doorTarget > state.doorsOpen ? 3.2 : 4.8, delta);
       state.rumble = Math.max(0, state.rumble - delta * 0.6);
       state.crowdPulse += delta;
@@ -872,16 +864,19 @@
       }
 
       const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
+      let contactCount = 0;
       for (const p of queuePeople) {
-        pushApart(player, p, enteringThroughDoor ? 0.34 : 0.48, enteringThroughDoor ? 0.06 : 0.18);
+        if (pushApart(player, p, enteringThroughDoor ? 0.42 : 0.5, enteringThroughDoor ? 0.12 : 0.2)) contactCount++;
       }
       for (const p of latePassengers) {
-        pushApart(player, p, enteringThroughDoor ? 0.3 : 0.42, enteringThroughDoor ? 0.025 : 0.08);
+        if (pushApart(player, p, enteringThroughDoor ? 0.4 : 0.46, enteringThroughDoor ? 0.11 : 0.16)) contactCount++;
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (!insideTrain && enteringThroughDoor) continue;
-        pushApart(player, p, insideTrain ? 0.28 : 0.38, insideTrain ? 0.035 : 0.08);
+        if (pushApart(player, p, insideTrain ? 0.34 : 0.4, insideTrain ? 0.055 : 0.075)) contactCount++;
+      }
+      if (contactCount > 0) {
+        player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
       }
     }
 
@@ -893,7 +888,9 @@
         const push = (radius - dist) * strength;
         a.position.x += (dx / dist) * push;
         a.position.z += (dz / dist) * push;
+        return true;
       }
+      return false;
     }
 
     function animatePlayer(delta, amount) {
