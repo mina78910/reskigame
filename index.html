@@ -216,11 +216,10 @@
 
     #joystick-zone {
       position: fixed;
-      left: 0;
-      bottom: 0;
+      inset: 0;
       z-index: 9;
-      width: min(46vw, 230px);
-      height: min(42vh, 230px);
+      width: 100vw;
+      height: 100dvh;
       touch-action: none;
       display: none;
     }
@@ -871,7 +870,7 @@
     }
 
     function isPlayerInsideTrain() {
-      return player.position.x < -5.05 && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
+      return player.position.x < -5.05 && Math.abs(player.position.z - currentTrainDoorZ()) < 1.65;
     }
 
     function isPassengerInsideTrain(passenger) {
@@ -1042,20 +1041,26 @@
       }
       player.position.z = THREE.MathUtils.clamp(player.position.z, -19.5, 18.5);
 
-      if (player.position.x < platformEdgeX && state.doorsOpen < 0.65 && !isPlayerInsideTrain()) player.position.x = platformEdgeX;
+      const doorCenterZ = currentTrainDoorZ();
+      const doorHalfWidth = 1.08;
+      const doorPassageOpen = state.doorsOpen >= 0.82;
+      const atDoor = Math.abs(player.position.z - doorCenterZ) < doorHalfWidth;
 
-      const atDoor = Math.abs(player.position.z - trainDoorZ) < 1.7;
-      if (player.position.x < platformEdgeX && !atDoor && !insideTrain) {
+      if (player.position.x < platformEdgeX && (!doorPassageOpen || !atDoor) && !isPlayerInsideTrain()) {
         player.position.x = platformEdgeX;
       }
 
-      if (player.position.x < -5.05) {
-        // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
-        // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
-        player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
+      if (player.position.x < platformEdgeX && atDoor) {
+        player.position.z = THREE.MathUtils.clamp(player.position.z, doorCenterZ - doorHalfWidth, doorCenterZ + doorHalfWidth);
       }
 
-      const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
+      if (player.position.x < -5.05) {
+        // 車内・ドア通過中は、現在の列車ドア位置を基準に通路幅へ収める。
+        // ドア脇からすり抜けるのではなく、開いたドア幅の中だけを通れるようにする。
+        player.position.z = THREE.MathUtils.clamp(player.position.z, doorCenterZ - 1.65, doorCenterZ + 1.65);
+      }
+
+      const enteringThroughDoor = atDoor && doorPassageOpen && !failed;
       let contactCount = 0;
       for (const p of queuePeople) {
         if (pushApart(player, p, enteringThroughDoor ? 0.46 : 0.54, enteringThroughDoor ? 0.16 : 0.24)) contactCount++;
@@ -1260,11 +1265,10 @@
 
     if (window.nipplejs) {
       const joystickSize = Math.max(86, Math.min(118, window.innerWidth * 0.28));
-      const joystickOffset = `${Math.round(joystickSize * 0.74)}px`;
       const joystick = nipplejs.create({
         zone: document.getElementById('joystick-zone'),
         mode: 'static',
-        position: { left: joystickOffset, bottom: joystickOffset },
+        position: { left: '50%', top: '62%' },
         color: '#facc15',
         size: joystickSize
       });
