@@ -699,6 +699,8 @@
     function updateQueue(delta) {
       const canBoard = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'boarded';
       queuePeople.forEach((p, i) => {
+        const prevX = p.position.x;
+        const prevZ = p.position.z;
         const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
           const t = Math.min(1, phaseOffset / 4.2);
@@ -706,6 +708,7 @@
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = THREE.MathUtils.lerp(Math.PI, Math.PI / 2, t);
+          resolvePassengerPlayerContact(p, prevX, prevZ, 0.46, 0.9);
         }
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
@@ -732,6 +735,8 @@
           target.x = platformEdgeX + 0.85 + (i % 4) * 0.28;
           target.z = trainDoorZ + (i - 8.5) * 0.42;
         }
+        const prevX = p.position.x;
+        const prevZ = p.position.z;
         const dx = target.x - p.position.x;
         const dz = target.z - p.position.z;
         const dist = Math.hypot(dx, dz);
@@ -740,6 +745,7 @@
           p.position.x += (dx / dist) * step;
           p.position.z += (dz / dist) * step;
           p.rotation.y = Math.atan2(dx, dz);
+          resolvePassengerPlayerContact(p, prevX, prevZ, closingScatter ? 0.38 : 0.44, closingScatter ? 0.45 : 0.75);
         }
         p.position.y = Math.sin(elapsed * 7 + i) * 0.018;
       });
@@ -923,6 +929,33 @@
       if (contactCount > 0) {
         player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
       }
+    }
+
+    function resolvePassengerPlayerContact(passenger, previousX, previousZ, radius, pressure) {
+      if (failed || boarded) return false;
+      const dx = player.position.x - passenger.position.x;
+      const dz = player.position.z - passenger.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist <= 0.001 || dist >= radius) return false;
+
+      const overlap = radius - dist;
+      const moveX = passenger.position.x - previousX;
+      const moveZ = passenger.position.z - previousZ;
+      const moveDist = Math.hypot(moveX, moveZ);
+      const pushX = moveDist > 0.001 ? moveX / moveDist : dx / dist;
+      const pushZ = moveDist > 0.001 ? moveZ / moveDist : dz / dist;
+      const separationX = dx / dist;
+      const separationZ = dz / dist;
+
+      // 乗客側から接触してきたときも、プレイヤーを押して通れない扱いにする。
+      // これで後続客が自分をすり抜けて追い抜くのではなく、背後から圧がかかる。
+      player.position.x += pushX * overlap * pressure + separationX * overlap * 0.18;
+      player.position.z += pushZ * overlap * pressure + separationZ * overlap * 0.18;
+      passenger.position.x -= pushX * overlap * 0.42;
+      passenger.position.z -= pushZ * overlap * 0.42;
+      player.userData.velocity.x += pushX * overlap * pressure * 1.6;
+      player.userData.velocity.z += pushZ * overlap * pressure * 1.6;
+      return true;
     }
 
     function pushApart(a, b, radius, strength) {
