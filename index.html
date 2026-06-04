@@ -105,6 +105,24 @@
       background: rgba(15, 23, 42, 0.5);
     }
 
+    #coords {
+      position: fixed;
+      top: max(12px, env(safe-area-inset-top));
+      left: 12px;
+      z-index: 11;
+      padding: 8px 10px;
+      border-radius: 12px;
+      color: #bfdbfe;
+      background: rgba(2, 6, 23, 0.72);
+      border: 1px solid rgba(147, 197, 253, 0.28);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      pointer-events: none;
+      text-align: left;
+      white-space: nowrap;
+    }
+
     #hud {
       position: fixed;
       top: max(16px, env(safe-area-inset-top));
@@ -247,9 +265,10 @@
     </div>
   </div>
 
+  <div id="coords">X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
   <div id="hud">
     <div id="phase">電車入線中</div>
-    <div id="message">東西線がすぐにホームへ入ってくる。列の最後尾からドアへ向かおう。</div>
+    <div id="message">東西線がすぐにホームへ入ってくる。列車に対して垂直に、真正面のドアへ向かおう。</div>
   </div>
   <div id="hint">青い人物があなたです。視点は自動で進行方向を見ます。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
   <div id="announcement">まもなくドアが閉まります。ご注意ください。</div>
@@ -263,6 +282,7 @@
     if (isMobile) document.body.classList.add('mobile');
 
     const startScreen = document.getElementById('start-screen');
+    const coordsEl = document.getElementById('coords');
     const phaseEl = document.getElementById('phase');
     const messageEl = document.getElementById('message');
     const announcementEl = document.getElementById('announcement');
@@ -324,7 +344,7 @@
       bag: true,
       scale: 1.08
     });
-    player.position.set(doorX, 0, 9.05);
+    player.position.set(4.15, 0, trainDoorZ);
     player.userData.velocity = new THREE.Vector3();
     scene.add(player);
 
@@ -440,7 +460,7 @@
         new THREE.PlaneGeometry(2.9, 0.82),
         new THREE.MeshBasicMaterial({ map: createTextTexture('最後尾', { background: '#f59e0b', color: '#111827', size: 56 }) })
       );
-      lastSign.position.set(2.1, 2.05, 9.35);
+      lastSign.position.set(3.6, 2.05, trainDoorZ + 0.7);
       lastSign.rotation.y = Math.PI * 0.04;
       scene.add(lastSign);
     }
@@ -628,8 +648,8 @@
       const colors = [0x64748b, 0xbe123c, 0x166534, 0x9333ea, 0x334155, 0xb45309, 0x0f766e, 0x52525b];
       for (let i = 0; i < 16; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x1f2937, skin: i % 3 === 0 ? 0xf0b38a : 0xffd3a4, scale: 0.98 + Math.random() * 0.08, bag: i % 2 === 0 });
-        p.position.set(doorX + (Math.random() - 0.5) * 0.28, 0, -3.35 + i * 0.76);
-        p.rotation.y = Math.PI;
+        p.position.set(doorX + i * 0.34, 0, trainDoorZ + (i % 4 - 1.5) * 0.16 + (Math.random() - 0.5) * 0.08);
+        p.rotation.y = -Math.PI / 2;
         p.userData.queueIndex = i;
         scene.add(p);
         queuePeople.push(p);
@@ -683,20 +703,20 @@
         const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
           const t = Math.min(1, phaseOffset / 4.2);
-          p.position.x = THREE.MathUtils.lerp(doorX, -5.55, easeInOut(t));
-          p.position.z = THREE.MathUtils.lerp(-3.35 + i * 0.76, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
-          p.rotation.y = THREE.MathUtils.lerp(Math.PI, Math.PI / 2, t);
+          p.position.x = THREE.MathUtils.lerp(doorX + i * 0.34, -5.55, easeInOut(t));
+          p.position.z = THREE.MathUtils.lerp(trainDoorZ + (i % 4 - 1.5) * 0.16, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
+          p.rotation.y = -Math.PI / 2;
         }
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
 
       if (state.phase === 'arriving') {
-        const queueEnd = 9.05;
-        const dx = player.position.x - doorX;
-        const dz = player.position.z - queueEnd;
+        const queueEndX = doorX + 15 * 0.34 + 0.7;
+        const dx = player.position.x - queueEndX;
+        const dz = player.position.z - trainDoorZ;
         const dist = Math.hypot(dx, dz);
         if (dist > 0.3) {
-          messageEl.textContent = '列から外れすぎないで。電車はもうホームへ入ってきている。';
+          messageEl.textContent = '列の正面から外れすぎないで。真正面のドアへ押し込もう。';
         }
       }
     }
@@ -756,7 +776,7 @@
       if (elapsed < 3.1) {
         state.phase = 'arriving';
         phaseEl.textContent = '電車入線中';
-        messageEl.textContent = '東西線がすぐにホームへ滑り込んでくる。列の最後尾からドアへ向かおう。';
+        messageEl.textContent = '東西線がすぐにホームへ滑り込んでくる。列車に対して垂直に、真正面のドアへ向かおう。';
         return;
       }
 
@@ -932,12 +952,9 @@
     }
 
     function updateAutoView(delta) {
-      const nearingDoor = Math.abs(player.position.z - trainDoorZ) < 2.2 && state.doorsOpen > 0.45;
-      const lookTarget = tmpVec.set(player.position.x, 0, player.position.z - 8);
+      const lookTarget = tmpVec.set(-5.65, 0, trainDoorZ);
       if (insideTrain || player.position.x < -5.05) {
         lookTarget.set(-6.65, 0, THREE.MathUtils.clamp(player.position.z, -6.2, -2.8));
-      } else if (nearingDoor) {
-        lookTarget.set(-5.65, 0, trainDoorZ);
       } else if (failed) {
         lookTarget.set(platformEdgeX + 0.9, 0, trainDoorZ);
       }
@@ -968,6 +985,10 @@
       camera.lookAt(tmpVec.copy(player.position).add(new THREE.Vector3(0, 1.15, 0)));
     }
 
+    function updateCoordinates() {
+      coordsEl.innerHTML = `X: ${player.position.x.toFixed(2)}<br>Y: ${player.position.y.toFixed(2)}<br>Z: ${player.position.z.toFixed(2)}`;
+    }
+
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.045);
@@ -979,6 +1000,7 @@
       updateAutoView(delta);
       if (started) movePlayer(delta);
       updateCamera();
+      updateCoordinates();
       renderer.render(scene, camera);
     }
 
