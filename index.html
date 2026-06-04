@@ -313,7 +313,7 @@
     let started = false;
     let elapsed = 0;
     let yaw = -Math.PI / 2;
-    let pitch = -0.18;
+    let pitch = 0.04;
     let announcementPlayed = false;
     let mobileMove = { x: 0, y: 0 };
     let insideTrain = false;
@@ -714,7 +714,7 @@
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = THREE.MathUtils.lerp(Math.PI, Math.PI / 2, t);
           blockPassengerBehindPlayer(p, 0.48, 0.78);
-          applyPassengerContact(p, 0.48, 0.22, 0.16);
+          applyPassengerContact(p, 0.52, 0.26, 0.2);
         }
         p.position.y = Math.sin(elapsed * 5 + i) * 0.014;
       });
@@ -758,7 +758,7 @@
           p.rotation.y = Math.atan2(dx, dz);
         }
         blockPassengerBehindPlayer(p, 0.44, 0.92);
-        applyPassengerContact(p, 0.46, 0.18, 0.18);
+        applyPassengerContact(p, 0.5, 0.22, 0.22);
         p.position.y = Math.sin(elapsed * 7 + i) * 0.018;
       });
     }
@@ -933,18 +933,61 @@
       const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
       let contactCount = 0;
       for (const p of queuePeople) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.42 : 0.5, enteringThroughDoor ? 0.12 : 0.2)) contactCount++;
+        if (pushApart(player, p, enteringThroughDoor ? 0.46 : 0.54, enteringThroughDoor ? 0.16 : 0.24)) contactCount++;
       }
       for (const p of latePassengers) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.4 : 0.46, enteringThroughDoor ? 0.11 : 0.16)) contactCount++;
+        if (pushApart(player, p, enteringThroughDoor ? 0.44 : 0.5, enteringThroughDoor ? 0.15 : 0.2)) contactCount++;
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (pushApart(player, p, insideTrain ? 0.34 : 0.4, insideTrain ? 0.055 : 0.075)) contactCount++;
+        if (pushApart(player, p, insideTrain ? 0.38 : 0.44, insideTrain ? 0.08 : 0.11)) contactCount++;
       }
       if (contactCount > 0) {
         player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
       }
+    }
+
+    function resolveCrowdContacts() {
+      const movingPassengers = queuePeople.concat(latePassengers);
+      resolvePassengerGroup(movingPassengers, 0.44, 0.55);
+
+      const visiblePacked = packedPeople.filter((p) => p.visible);
+      for (const passenger of movingPassengers) {
+        for (const packed of visiblePacked) {
+          resolvePassengerPair(passenger, packed, 0.36, 0.18, 0.04);
+        }
+      }
+
+      for (const passenger of movingPassengers) {
+        applyPassengerContact(passenger, 0.5, 0.2, 0.2);
+      }
+      for (const passenger of visiblePacked) {
+        applyPassengerContact(passenger, insideTrain ? 0.38 : 0.42, 0.08, insideTrain ? 0.1 : 0.08);
+      }
+      constrainPlayer();
+    }
+
+    function resolvePassengerGroup(passengers, radius, strength) {
+      for (let i = 0; i < passengers.length; i++) {
+        for (let j = i + 1; j < passengers.length; j++) {
+          resolvePassengerPair(passengers[i], passengers[j], radius, strength, strength);
+        }
+      }
+    }
+
+    function resolvePassengerPair(a, b, radius, aShare, bShare) {
+      const dx = a.position.x - b.position.x;
+      const dz = a.position.z - b.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist <= 0.001 || dist >= radius) return false;
+      const overlap = radius - dist;
+      const nx = dx / dist;
+      const nz = dz / dist;
+      a.position.x += nx * overlap * aShare;
+      a.position.z += nz * overlap * aShare;
+      b.position.x -= nx * overlap * bShare;
+      b.position.z -= nz * overlap * bShare;
+      return true;
     }
 
     function blockPassengerBehindPlayer(passenger, gap, laneWidth) {
@@ -1014,7 +1057,7 @@
       if (Math.hypot(dx, dz) > 0.001) {
         yaw = lerpAngle(yaw, Math.atan2(dx, dz), 1 - Math.exp(-delta * 3.6));
       }
-      pitch = THREE.MathUtils.lerp(pitch, -0.14, 1 - Math.exp(-delta * 4));
+      pitch = THREE.MathUtils.lerp(pitch, 0.04, 1 - Math.exp(-delta * 4));
     }
 
     function lerpAngle(from, to, amount) {
@@ -1024,7 +1067,7 @@
 
     function updateCamera() {
       const distance = 4.9;
-      const height = 2.65;
+      const height = 2.25;
       const offset = new THREE.Vector3(
         -Math.sin(yaw) * Math.cos(pitch) * distance,
         height + Math.sin(-pitch) * 1.4,
@@ -1034,7 +1077,7 @@
       camera.position.y = Math.max(camera.position.y, 1.4);
       if (camera.position.x < -6.9) camera.position.x = -6.9;
       if (camera.position.x > platformWallX - 0.12) camera.position.x = platformWallX - 0.12;
-      camera.lookAt(tmpVec.copy(player.position).add(new THREE.Vector3(0, 1.15, 0)));
+      camera.lookAt(tmpVec.copy(player.position).add(new THREE.Vector3(0, 2.15, 0)));
     }
 
     function updateCoordinates() {
@@ -1051,6 +1094,7 @@
       updateLatePassengers(delta);
       updateAutoView(delta);
       if (started) movePlayer(delta);
+      resolveCrowdContacts();
       updateCamera();
       updateCoordinates();
       renderer.render(scene, camera);
