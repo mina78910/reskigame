@@ -447,8 +447,8 @@
     const trainInteriorPadding = 0.22;
     const trainInteriorPassengerHalfZ = 2.25;
     const trainInteriorPlayerHalfZ = 1.55;
-    const trainPackedCapacity = 72;
-    const trainPackedColumns = 12;
+    const trainPackedCapacity = 60;
+    const trainPackedColumns = 10;
     const trainDepartureStopZ = 20;
     const trainDoorPassageHalfWidth = 0.95;
     const trainDoorZ = -4.7;
@@ -874,11 +874,11 @@
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
         const row = Math.floor(i / trainPackedColumns);
         const col = i % trainPackedColumns;
-        const depthLane = col % 6;
-        const zLane = row * 2 + Math.floor(col / 6);
+        const depthLane = col % 5;
+        const zLane = row * 2 + Math.floor(col / 5);
         const zStep = (trainInteriorPassengerHalfZ * 2) / 11;
-        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + zLane * zStep + (Math.random() - 0.5) * 0.08;
-        p.position.set(trainInteriorWallX + 0.32 + depthLane * 0.5 + Math.random() * 0.08, 0.06, crowdedZ);
+        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + zLane * zStep + (Math.random() - 0.5) * 0.06;
+        p.position.set(trainInteriorWallX + 0.45 + depthLane * 0.62 + Math.random() * 0.05, 0.06, crowdedZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
         packedPeople.push(p);
@@ -1218,7 +1218,7 @@
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (pushApart(player, p, insideTrain ? 0.38 : 0.44, insideTrain ? 0.08 : 0.11)) contactCount++;
+        if (pushApart(player, p, insideTrain ? 0.56 : 0.5, insideTrain ? 0.16 : 0.14)) contactCount++;
       }
       if (contactCount > 0) {
         player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
@@ -1231,10 +1231,10 @@
       resolvePassengerGroup(movingPassengers, 0.44, 0.55);
 
       const visiblePacked = packedPeople.filter((p) => p.visible);
-      resolvePassengerGroup(visiblePacked, 0.34, 0.24);
+      resolvePassengerGroup(visiblePacked, 0.48, 0.38);
       for (const passenger of movingPassengers) {
         for (const packed of visiblePacked) {
-          resolvePassengerPair(passenger, packed, 0.36, 0.18, 0.04);
+          resolvePassengerPair(passenger, packed, 0.48, 0.22, 0.12);
         }
       }
 
@@ -1242,7 +1242,7 @@
         applyPassengerContact(passenger, 0.5, 0.2, 0.2);
       }
       for (const passenger of visiblePacked) {
-        applyPassengerContact(passenger, insideTrain ? 0.38 : 0.42, 0.08, insideTrain ? 0.1 : 0.08);
+        applyPassengerContact(passenger, insideTrain ? 0.52 : 0.46, 0.14, insideTrain ? 0.24 : 0.12);
       }
       for (const passenger of movingPassengers) {
         constrainPassengerToTrainInterior(passenger);
