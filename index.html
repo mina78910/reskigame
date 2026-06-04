@@ -206,7 +206,7 @@
     <div id="phase">発車前のホーム</div>
     <div id="message">黄色い線の内側で、東西線の行列最後尾に並んでいる。到着まで <span id="timer">5.0</span> 秒。</div>
   </div>
-  <div id="hint">青い人物があなたです。混雑した車内へ近づくほど押し返されるので、行列の隙間を見つけてゆっくり乗車しましょう。</div>
+  <div id="hint">青い人物があなたです。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。行列の流れに合わせて押し込みましょう。</div>
   <div id="joystick-zone"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -644,7 +644,7 @@
       if (!boarded) {
         state.phase = 'boarding';
         phaseEl.textContent = '乗車中';
-        messageEl.textContent = 'あなたは最後尾。前の人との間隔を保ちながら、空いた隙間へ体をねじ込んでいく。';
+        messageEl.textContent = 'あなたは最後尾。ドアへ向かって歩き続ければ、その分だけ車内へじわじわ入っていける。';
       }
     }
 
@@ -720,14 +720,19 @@
       }
 
       if (player.position.x < -5.05) {
-        const crowdPressure = THREE.MathUtils.clamp((-5.05 - player.position.x) * 0.4, 0, 0.22);
-        player.position.x += crowdPressure;
+        // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
+        // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
         player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
       }
 
-      for (const p of queuePeople) pushApart(player, p, 0.48, 0.24);
+      const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
+      for (const p of queuePeople) {
+        pushApart(player, p, enteringThroughDoor ? 0.34 : 0.48, enteringThroughDoor ? 0.06 : 0.18);
+      }
       for (const p of packedPeople) {
-        if (p.visible) pushApart(player, p, boarded ? 0.34 : 0.46, boarded ? 0.08 : 0.18);
+        if (!p.visible) continue;
+        if (!boarded && enteringThroughDoor) continue;
+        pushApart(player, p, boarded ? 0.28 : 0.38, boarded ? 0.035 : 0.08);
       }
     }
 
