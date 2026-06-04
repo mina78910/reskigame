@@ -447,7 +447,8 @@
     const trainInteriorPadding = 0.22;
     const trainInteriorPassengerHalfZ = 2.25;
     const trainInteriorPlayerHalfZ = 1.55;
-    const trainPackedCapacity = 96;
+    const trainPackedCapacity = 72;
+    const trainPackedColumns = 12;
     const trainDepartureStopZ = 20;
     const trainDoorPassageHalfWidth = 0.95;
     const trainDoorZ = -4.7;
@@ -871,12 +872,13 @@
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
       for (let i = 0; i < trainPackedCapacity; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
-        const row = Math.floor(i / 16);
-        const col = i % 16;
+        const row = Math.floor(i / trainPackedColumns);
+        const col = i % trainPackedColumns;
         const depthLane = col % 6;
-        const zLane = Math.floor(col / 6) - 1;
-        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + row * 0.82 + zLane * 0.18 + (Math.random() - 0.5) * 0.12;
-        p.position.set(trainInteriorWallX + 0.24 + depthLane * 0.48 + Math.random() * 0.12, 0.06, crowdedZ);
+        const zLane = row * 2 + Math.floor(col / 6);
+        const zStep = (trainInteriorPassengerHalfZ * 2) / 11;
+        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + zLane * zStep + (Math.random() - 0.5) * 0.08;
+        p.position.set(trainInteriorWallX + 0.32 + depthLane * 0.5 + Math.random() * 0.08, 0.06, crowdedZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
         packedPeople.push(p);
@@ -1229,6 +1231,7 @@
       resolvePassengerGroup(movingPassengers, 0.44, 0.55);
 
       const visiblePacked = packedPeople.filter((p) => p.visible);
+      resolvePassengerGroup(visiblePacked, 0.34, 0.24);
       for (const passenger of movingPassengers) {
         for (const packed of visiblePacked) {
           resolvePassengerPair(passenger, packed, 0.36, 0.18, 0.04);
