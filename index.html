@@ -1012,8 +1012,24 @@
         p.position.x = Math.min(p.position.x, trainInteriorWallX + 0.38 + depthLane * 0.48);
         p.position.z = doorZ - 1.0 + zLane * 0.42;
         p.rotation.y = Math.PI / 2 + (depthLane - 2.5) * 0.08;
+        constrainPassengerToTrainInterior(p);
       });
       if (includePlayer) player.position.x = Math.min(player.position.x, -5.55);
+    }
+
+    function settleDepartureCrowdPositions(includePlayer = false) {
+      pullDoorCrowdInsideTrain(includePlayer);
+      queuePeople.concat(latePassengers).forEach((p) => {
+        if (p.position.x < trainInteriorDoorX) {
+          constrainPassengerToTrainInterior(p);
+        } else if (p.position.x < platformEdgeX) {
+          p.position.x = platformEdgeX + 0.08;
+        }
+      });
+      if (includePlayer && player.position.x < trainInteriorDoorX) {
+        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, trainInteriorDoorX - trainInteriorPadding);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - trainInteriorPlayerHalfZ, currentTrainDoorZ() + trainInteriorPlayerHalfZ);
+      }
     }
 
     function completeBoarding() {
@@ -1024,7 +1040,7 @@
       document.body.classList.add('cleared');
       clearBannerEl.textContent = 'Clear!';
       messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
-      pullDoorCrowdInsideTrain(true);
+      settleDepartureCrowdPositions(true);
       showRestartButton();
     }
 
@@ -1066,7 +1082,7 @@
         if (insideTrain) {
           completeBoarding();
         } else {
-          pullDoorCrowdInsideTrain(false);
+          settleDepartureCrowdPositions(false);
           failed = true;
           state.phase = 'failed';
           document.body.classList.add('failed');
@@ -1131,6 +1147,7 @@
       train.position.x = trainFloorX - 1.84 + Math.sin(elapsed * 33) * state.rumble * 0.018;
       updateTrainPosition();
       moveOnboardCrowdWithTrain(trainDeltaZ);
+      if (boarded || failed) settleDepartureCrowdPositions(boarded);
 
       packedPeople.forEach((p, i) => {
         p.position.y = 0.06 + Math.sin(state.crowdPulse * 4.5 + i * 0.77) * 0.025;
