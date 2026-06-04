@@ -217,11 +217,11 @@
     #joystick-zone {
       position: fixed;
       left: 50%;
-      top: 58%;
+      bottom: env(safe-area-inset-bottom);
       z-index: 9;
       width: min(46vw, 230px);
       height: min(42vh, 230px);
-      transform: translate(-50%, -50%);
+      transform: translateX(-50%);
       touch-action: none;
       display: none;
     }
