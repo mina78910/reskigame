@@ -413,6 +413,8 @@
     const platformEdgeX = -4.35;
     const platformWallX = 5.05;
     const trainFloorX = -5.25;
+    const trainInteriorWallX = -8.45;
+    const trainDepartureStopZ = 20;
     const trainDoorZ = -4.7;
 
     const player = createPerson({
@@ -820,7 +822,7 @@
           trainDoorZ + (Math.random() - 0.5) * 2.45
         );
         p.userData.boardOffset = new THREE.Vector3(
-          -5.55 - Math.random() * 1.25,
+          trainInteriorWallX + 0.25 + Math.random() * 2.45,
           0,
           trainDoorZ - 0.95 + (i % 6) * 0.36
         );
@@ -832,13 +834,13 @@
 
     function createPackedCar() {
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
-      for (let i = 0; i < 78; i++) {
+      for (let i = 0; i < 96; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
-        const row = Math.floor(i / 13);
-        const col = i % 13;
-        const depthLane = col % 4;
-        const zLane = Math.floor(col / 4) - 1;
-        p.position.set(-5.65 - depthLane * 0.38 - Math.random() * 0.18, 0.06, -8.7 + row * 2.35 + zLane * 0.32);
+        const row = Math.floor(i / 16);
+        const col = i % 16;
+        const depthLane = col % 6;
+        const zLane = Math.floor(col / 6) - 1;
+        p.position.set(trainInteriorWallX + 0.24 + depthLane * 0.48 + Math.random() * 0.12, 0.06, -8.7 + row * 2.35 + zLane * 0.32);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
         packedPeople.push(p);
@@ -1025,8 +1027,13 @@
     function updateTrain(delta) {
       const previousTrainZ = state.trainZ;
       if (boarded || failed) {
-        state.departureSpeed = THREE.MathUtils.damp(state.departureSpeed, 8.5, 1.8, delta);
-        state.trainZ += state.departureSpeed * delta;
+        if (state.trainZ < trainDepartureStopZ) {
+          state.departureSpeed = THREE.MathUtils.damp(state.departureSpeed, 8.5, 1.8, delta);
+          state.trainZ = Math.min(trainDepartureStopZ, state.trainZ + state.departureSpeed * delta);
+        } else {
+          state.trainZ = trainDepartureStopZ;
+          state.departureSpeed = 0;
+        }
       } else if (state.trainZ < state.trainTargetZ) {
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
@@ -1098,7 +1105,7 @@
       } else if (state.doorsOpen < 0.55 && !isPlayerInsideTrain()) {
         player.position.x = THREE.MathUtils.clamp(player.position.x, -3.45, platformWallX - 0.45);
       } else {
-        player.position.x = THREE.MathUtils.clamp(player.position.x, -7.05, platformWallX - 0.45);
+        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, platformWallX - 0.45);
       }
       player.position.z = THREE.MathUtils.clamp(player.position.z, -19.5, 18.5);
 
@@ -1243,7 +1250,7 @@
       if (boarded) {
         lookTarget.set(player.position.x, 0, player.position.z + 8);
       } else if (insideTrain || player.position.x < -5.05) {
-        lookTarget.set(-6.65, 0, player.position.z + 4);
+        lookTarget.set(trainInteriorWallX + 0.75, 0, player.position.z + 4);
       } else if (failed) {
         lookTarget.set(platformEdgeX + 0.9, 0, currentTrainDoorZ());
       }
