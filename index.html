@@ -898,6 +898,7 @@
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = Math.PI / 2;
+          constrainPassengerBoardingPath(p);
           blockPassengerBehindPlayer(p, 0.48, 0.78);
           applyPassengerContact(p, 0.52, 0.26, 0.2);
         }
@@ -948,6 +949,7 @@
           p.position.z += (dz / dist) * step;
           p.rotation.y = Math.atan2(-dx, -dz);
         }
+        constrainPassengerBoardingPath(p);
         blockPassengerBehindPlayer(p, 0.44, 0.92);
         applyPassengerContact(p, 0.5, 0.22, 0.22);
         p.position.y = Math.sin(elapsed * 7 + i) * 0.018;
@@ -968,6 +970,19 @@
 
     function isPassengerInsideTrain(passenger) {
       return passenger.position.x < -5.05 && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
+    }
+
+    function isAtOpenTrainDoor(position, margin = 0) {
+      return Math.abs(position.z - currentTrainDoorZ()) < trainDoorPassageHalfWidth + margin && state.doorsOpen >= 0.55 && !failed;
+    }
+
+    function constrainPassengerBoardingPath(passenger) {
+      const previousX = passenger.userData.prevX ?? passenger.position.x;
+      const crossedPlatformEdge = previousX >= platformEdgeX && passenger.position.x < platformEdgeX;
+      const betweenTrainAndPlatform = passenger.position.x < platformEdgeX && passenger.position.x > -5.05;
+      if ((crossedPlatformEdge || betweenTrainAndPlatform) && !isAtOpenTrainDoor(passenger.position, 0.12)) {
+        passenger.position.x = platformEdgeX;
+      }
     }
 
     function pullDoorCrowdInsideTrain(includePlayer = false) {
@@ -1243,12 +1258,21 @@
       const previousZ = passenger.userData.prevZ ?? passenger.position.z;
       const wasInSameLane = Math.abs(previousZ - player.position.z) < laneWidth;
       const isInSameLane = Math.abs(passenger.position.z - player.position.z) < laneWidth;
+      const segmentX = passenger.position.x - previousX;
+      const segmentZ = passenger.position.z - previousZ;
+      const segmentLenSq = segmentX * segmentX + segmentZ * segmentZ;
+      const closestT = segmentLenSq > 0.0001
+        ? THREE.MathUtils.clamp(((player.position.x - previousX) * segmentX + (player.position.z - previousZ) * segmentZ) / segmentLenSq, 0, 1)
+        : 1;
+      const closestX = previousX + segmentX * closestT;
+      const closestZ = previousZ + segmentZ * closestT;
+      const sweptThroughPlayer = Math.hypot(closestX - player.position.x, closestZ - player.position.z) < gap;
       const passengerWasBehind = previousX >= player.position.x + gap * 0.35;
       const passengerIsBehind = passenger.position.x >= player.position.x;
       const crossedThroughPlayer = passengerWasBehind && passenger.position.x < player.position.x + gap;
       const crowdingFromBehind = passengerIsBehind && passenger.position.x < player.position.x + gap;
 
-      if ((wasInSameLane || isInSameLane) && (crossedThroughPlayer || crowdingFromBehind)) {
+      if ((wasInSameLane || isInSameLane || sweptThroughPlayer) && (crossedThroughPlayer || crowdingFromBehind || sweptThroughPlayer)) {
         passenger.position.x = Math.min(platformWallX - 0.45, player.position.x + gap);
         passenger.position.z = THREE.MathUtils.lerp(passenger.position.z, player.position.z, 0.35);
         passenger.userData.blockedByPlayer = true;
