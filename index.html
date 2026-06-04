@@ -323,6 +323,8 @@
     const state = {
       trainZ: -30,
       trainTargetZ: -4.7,
+      trainDepartureZ: 34,
+      trainDeltaZ: 0,
       doorsOpen: 0,
       rumble: 0,
       crowdPulse: 0,
@@ -704,7 +706,7 @@
     }
 
     function updateQueue(delta) {
-      const canBoard = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'boarded';
+      const canBoard = state.phase === 'boarding' || state.phase === 'closing';
       queuePeople.forEach((p, i) => {
         const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
         if (canBoard && phaseOffset > 0) {
@@ -735,7 +737,7 @@
           p.position.y = Math.sin(elapsed * 4 + i) * 0.012;
           return;
         }
-        const closingScatter = state.phase === 'closing' || state.phase === 'failed';
+        const closingScatter = state.phase === 'closing' || state.phase === 'failed' || state.phase === 'boarded';
         const target = tmpVec.copy(p.userData.doorOffset);
         if (!closingScatter && elapsed > p.userData.rushDelay + 1.2) {
           target.copy(p.userData.boardOffset);
@@ -767,12 +769,20 @@
       return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
     }
 
+    function currentTrainDoorZ() {
+      return state.trainZ;
+    }
+
     function isPlayerInsideTrain() {
-      return player.position.x < -5.05 && Math.abs(player.position.z - trainDoorZ) < 2.25;
+      return player.position.x < -5.05 && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
     }
 
     function isPassengerInsideTrain(passenger) {
-      return passenger.position.x < -5.05 && Math.abs(passenger.position.z - trainDoorZ) < 2.45;
+      return passenger.position.x < -5.05 && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
+    }
+
+    function isPassengerAboard(passenger) {
+      return passenger.position.x < -5.05;
     }
 
     function updatePhase() {
@@ -781,7 +791,7 @@
       if (failed) {
         state.phase = 'failed';
         phaseEl.textContent = '乗車失敗';
-        messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+        messageEl.textContent = 'ドアが閉まった。電車は発車し、最後尾のあなたはホームに取り残されてしまった。';
         showRestartButton();
         return;
       }
@@ -789,7 +799,7 @@
       if (boarded) {
         state.phase = 'boarded';
         phaseEl.textContent = '乗車完了';
-        messageEl.textContent = 'ドアが閉まりきった。あなたは車内側にいるので乗車完了。';
+        messageEl.textContent = 'ドアが閉まりきった。電車はあなたを乗せて発車していく。';
         showRestartButton();
         return;
       }
@@ -814,14 +824,14 @@
           state.phase = 'boarded';
           phaseEl.textContent = '乗車完了';
           document.body.classList.remove('failed');
-          messageEl.textContent = 'ドアが閉まりきった。あなたは車内側にいるので乗車完了。';
+          messageEl.textContent = 'ドアが閉まりきった。電車はあなたを乗せて発車していく。';
           showRestartButton();
         } else {
           failed = true;
           state.phase = 'failed';
           document.body.classList.add('failed');
           phaseEl.textContent = '乗車失敗';
-          messageEl.textContent = 'ドアが閉まった。最後尾のあなたはホームに取り残されてしまった。';
+          messageEl.textContent = 'ドアが閉まった。電車は発車し、最後尾のあなたはホームに取り残されてしまった。';
           showRestartButton();
         }
         return;
@@ -860,10 +870,15 @@
     }
 
     function updateTrain(delta) {
-      if (state.trainZ < state.trainTargetZ) {
+      const previousTrainZ = state.trainZ;
+      if (elapsed >= 17) {
+        state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainDepartureZ, 0.75, delta);
+        state.rumble = Math.max(state.rumble, 0.55);
+      } else if (state.trainZ < state.trainTargetZ) {
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
       }
+      state.trainDeltaZ = state.trainZ - previousTrainZ;
       const doorTarget = elapsed >= 14.5 ? 0 : (elapsed >= 3.3 ? 1 : 0);
       state.doorsOpen = THREE.MathUtils.damp(state.doorsOpen, doorTarget, doorTarget > state.doorsOpen ? 3.2 : 4.8, delta);
       state.rumble = Math.max(0, state.rumble - delta * 0.6);
@@ -1033,6 +1048,26 @@
       return false;
     }
 
+    function moveDepartingTrainContents() {
+      if (Math.abs(state.trainDeltaZ) < 0.0001 || elapsed < 17) return;
+
+      for (const p of packedPeople) {
+        if (p.visible) p.position.z += state.trainDeltaZ;
+      }
+      for (const p of queuePeople) {
+        if (isPassengerAboard(p)) p.position.z += state.trainDeltaZ;
+      }
+      for (const p of latePassengers) {
+        if (isPassengerAboard(p)) {
+          p.position.z += state.trainDeltaZ;
+          if (p.userData.boardOffset) p.userData.boardOffset.z += state.trainDeltaZ;
+        }
+      }
+      if (boarded) {
+        player.position.z += state.trainDeltaZ;
+      }
+    }
+
     function animatePlayer(delta, amount) {
       player.position.y = Math.sin(elapsed * 10) * 0.025 * amount;
       const limbs = player.userData.limbs;
@@ -1047,10 +1082,12 @@
 
     function updateAutoView(delta) {
       const lookTarget = tmpVec.set(-5.85, 0, trainDoorZ);
-      if (insideTrain || player.position.x < -5.05) {
-        lookTarget.set(-6.65, 0, THREE.MathUtils.clamp(player.position.z, -6.2, -2.8));
+      if (boarded) {
+        lookTarget.set(player.position.x, 0, player.position.z + 8);
+      } else if (insideTrain || player.position.x < -5.05) {
+        lookTarget.set(-6.65, 0, THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - 1.5, currentTrainDoorZ() + 1.5));
       } else if (failed) {
-        lookTarget.set(platformEdgeX + 0.9, 0, trainDoorZ);
+        lookTarget.set(trainFloorX - 1.84, 0, state.trainZ + 5);
       }
       const dx = lookTarget.x - player.position.x;
       const dz = lookTarget.z - player.position.z;
@@ -1095,6 +1132,7 @@
       updateAutoView(delta);
       if (started) movePlayer(delta);
       resolveCrowdContacts();
+      moveDepartingTrainContents();
       updateCamera();
       updateCoordinates();
       renderer.render(scene, camera);
