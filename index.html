@@ -590,8 +590,7 @@
 
       const stripeSegments = [
         { z: -8.35, d: 12.25 },
-        { z: 8.35, d: 12.25 },
-        { z: 0, d: 2.8 }
+        { z: 8.35, d: 12.25 }
       ];
       stripeSegments.forEach(({ z, d }) => {
         [
@@ -821,7 +820,7 @@
           trainDoorZ + (Math.random() - 0.5) * 2.45
         );
         p.userData.boardOffset = new THREE.Vector3(
-          -5.45 - Math.random() * 0.5,
+          -5.55 - Math.random() * 1.25,
           0,
           trainDoorZ - 0.95 + (i % 6) * 0.36
         );
@@ -833,11 +832,13 @@
 
     function createPackedCar() {
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
-      for (let i = 0; i < 58; i++) {
+      for (let i = 0; i < 78; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
-        const row = Math.floor(i / 10);
-        const col = i % 10;
-        p.position.set(-5.72 - Math.random() * 0.82, 0.06, -8.7 + row * 2.65 + (col - 4.5) * 0.28);
+        const row = Math.floor(i / 13);
+        const col = i % 13;
+        const depthLane = col % 4;
+        const zLane = Math.floor(col / 4) - 1;
+        p.position.set(-5.65 - depthLane * 0.38 - Math.random() * 0.18, 0.06, -8.7 + row * 2.35 + zLane * 0.32);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
         packedPeople.push(p);
@@ -1097,7 +1098,7 @@
       } else if (state.doorsOpen < 0.55 && !isPlayerInsideTrain()) {
         player.position.x = THREE.MathUtils.clamp(player.position.x, -3.45, platformWallX - 0.45);
       } else {
-        player.position.x = THREE.MathUtils.clamp(player.position.x, -6.55, platformWallX - 0.45);
+        player.position.x = THREE.MathUtils.clamp(player.position.x, -7.05, platformWallX - 0.45);
       }
       player.position.z = THREE.MathUtils.clamp(player.position.z, -19.5, 18.5);
 
