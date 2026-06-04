@@ -306,6 +306,7 @@
     const keys = new Set();
     const colliders = [];
     const queuePeople = [];
+    const platformCrowd = [];
     const packedPeople = [];
     const latePassengers = [];
     const doors = [];
@@ -345,6 +346,7 @@
       scale: 1.08
     });
     player.position.set(3.25, 0, trainDoorZ);
+    player.rotation.y = faceDirection(-1, 0);
     player.userData.velocity = new THREE.Vector3();
     scene.add(player);
 
@@ -353,6 +355,7 @@
     const train = createTrain();
     scene.add(train);
     createQueue();
+    createPlatformCrowd();
     createLatePassengers();
     createPackedCar();
     updateTrainPosition();
@@ -646,15 +649,47 @@
       return group;
     }
 
+    function faceDirection(x, z) {
+      return Math.atan2(-x, -z);
+    }
+
     function createQueue() {
       const colors = [0x64748b, 0xbe123c, 0x166534, 0x9333ea, 0x334155, 0xb45309, 0x0f766e, 0x52525b];
       for (let i = 0; i < 16; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x1f2937, skin: i % 3 === 0 ? 0xf0b38a : 0xffd3a4, scale: 0.98 + Math.random() * 0.08, bag: i % 2 === 0 });
         p.position.set(platformEdgeX + 1.25 + i * 0.38, 0, trainDoorZ + (Math.random() - 0.5) * 0.18);
-        p.rotation.y = Math.PI;
+        p.rotation.y = faceDirection(-1, 0);
         p.userData.queueIndex = i;
         scene.add(p);
         queuePeople.push(p);
+      }
+    }
+
+
+    function createPlatformCrowd() {
+      const colors = [0x1d4ed8, 0x7c3aed, 0x15803d, 0xb45309, 0xbe123c, 0x475569, 0x0f766e, 0x6d28d9];
+      for (let i = 0; i < 34; i++) {
+        const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 5 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 4 === 0 });
+        const row = Math.floor(i / 6);
+        const col = i % 6;
+        let x = -2.4 + col * 1.05 + (Math.random() - 0.5) * 0.34;
+        let z = -13.2 + row * 4.25 + (Math.random() - 0.5) * 0.86;
+        if (Math.abs(z - trainDoorZ) < 1.0 && x > 1.9) x -= 1.15;
+        p.position.set(x, 0, z);
+        p.rotation.y = faceDirection(-1, 0) + (Math.random() - 0.5) * 0.32;
+        p.userData.doorOffset = new THREE.Vector3(
+          platformEdgeX + 0.78 + (Math.random() - 0.5) * 0.95,
+          0,
+          trainDoorZ + (Math.random() - 0.5) * 3.2
+        );
+        p.userData.boardOffset = new THREE.Vector3(
+          -5.55 - Math.random() * 0.55,
+          0,
+          trainDoorZ - 1.05 + (i % 7) * 0.35
+        );
+        p.userData.rushDelay = 4.0 + Math.random() * 5.0;
+        scene.add(p);
+        platformCrowd.push(p);
       }
     }
 
@@ -665,7 +700,7 @@
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.92 + Math.random() * 0.1, bag: i % 3 === 0 });
         const side = i % 2 === 0 ? -1 : 1;
         p.position.set(0.25 + Math.random() * 2.9, 0, trainDoorZ + side * (1.8 + Math.random() * 5.2));
-        p.rotation.y = Math.PI + (Math.random() - 0.5) * 0.6;
+        p.rotation.y = faceDirection(-1, 0) + (Math.random() - 0.5) * 0.4;
         p.userData.doorOffset = new THREE.Vector3(
           platformEdgeX + 0.42 + (Math.random() - 0.5) * 0.62,
           0,
@@ -713,7 +748,7 @@
           const startX = platformEdgeX + 1.25 + i * 0.38;
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
-          p.rotation.y = THREE.MathUtils.lerp(Math.PI, Math.PI / 2, t);
+          p.rotation.y = faceDirection(-1, 0);
           blockPassengerBehindPlayer(p, 0.48, 0.78);
           applyPassengerContact(p, 0.52, 0.26, 0.2);
         }
@@ -728,6 +763,34 @@
           messageEl.textContent = '列から外れすぎないで。電車に対してまっすぐドアへ向かおう。';
         }
       }
+    }
+
+    function updatePlatformCrowd(delta) {
+      platformCrowd.forEach((p, i) => {
+        const shouldPressToDoor = state.phase === 'boarding' || state.phase === 'closing' || state.phase === 'boarded';
+        if (shouldPressToDoor && elapsed > p.userData.rushDelay) {
+          const target = tmpVec.copy(p.userData.doorOffset);
+          if (state.phase !== 'closing' && elapsed > p.userData.rushDelay + 2.0) {
+            target.copy(p.userData.boardOffset);
+          }
+          if (state.phase === 'closing' && !isPassengerInsideTrain(p)) {
+            target.x = platformEdgeX + 1.15 + (i % 5) * 0.32;
+            target.z = trainDoorZ + (i - 17) * 0.34;
+          }
+          const dx = target.x - p.position.x;
+          const dz = target.z - p.position.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.03) {
+            const step = Math.min(dist, 0.72 * delta);
+            p.position.x += (dx / dist) * step;
+            p.position.z += (dz / dist) * step;
+            p.rotation.y = faceDirection(dx, dz);
+          }
+        }
+        p.position.y = Math.sin(elapsed * 3.5 + i) * 0.012;
+        blockPassengerBehindPlayer(p, 0.42, 0.8);
+        applyPassengerContact(p, 0.48, 0.18, 0.18);
+      });
     }
 
     function updateLatePassengers(delta) {
@@ -756,7 +819,7 @@
           const step = Math.min(dist, (closingScatter ? 0.8 : 1.65) * delta);
           p.position.x += (dx / dist) * step;
           p.position.z += (dz / dist) * step;
-          p.rotation.y = Math.atan2(dx, dz);
+          p.rotation.y = faceDirection(dx, dz);
         }
         blockPassengerBehindPlayer(p, 0.44, 0.92);
         applyPassengerContact(p, 0.5, 0.22, 0.22);
@@ -899,6 +962,9 @@
       for (const p of latePassengers) {
         if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
       }
+      for (const p of platformCrowd) {
+        if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
+      }
       if (boarded || isPlayerInsideTrain()) {
         player.position.z += deltaZ;
       }
@@ -919,7 +985,7 @@
       const desired = new THREE.Vector3().addScaledVector(forward, input.y).addScaledVector(right, input.x);
       if (desired.lengthSq() > 0.001) {
         desired.normalize();
-        player.rotation.y = Math.atan2(desired.x, desired.z);
+        player.rotation.y = faceDirection(desired.x, desired.z);
       }
 
       const speed = insideTrain ? 1.05 : 2.15;
@@ -965,6 +1031,9 @@
       for (const p of latePassengers) {
         if (pushApart(player, p, enteringThroughDoor ? 0.44 : 0.5, enteringThroughDoor ? 0.15 : 0.2)) contactCount++;
       }
+      for (const p of platformCrowd) {
+        if (pushApart(player, p, enteringThroughDoor ? 0.42 : 0.5, enteringThroughDoor ? 0.14 : 0.2)) contactCount++;
+      }
       for (const p of packedPeople) {
         if (!p.visible) continue;
         if (pushApart(player, p, insideTrain ? 0.38 : 0.44, insideTrain ? 0.08 : 0.11)) contactCount++;
@@ -975,7 +1044,7 @@
     }
 
     function resolveCrowdContacts() {
-      const movingPassengers = queuePeople.concat(latePassengers);
+      const movingPassengers = queuePeople.concat(latePassengers, platformCrowd);
       resolvePassengerGroup(movingPassengers, 0.44, 0.55);
 
       const visiblePacked = packedPeople.filter((p) => p.visible);
@@ -1120,6 +1189,7 @@
       updatePhase();
       updateTrain(delta);
       updateQueue(delta);
+      updatePlatformCrowd(delta);
       updateLatePassengers(delta);
       updateAutoView(delta);
       if (started) movePlayer(delta);
