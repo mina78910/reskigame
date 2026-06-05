@@ -449,10 +449,14 @@
     const trainInteriorPassengerHalfZ = 2.25;
     const trainInteriorPlayerHalfZ = 1.55;
     const trainPassengerBodyRadius = 0.42;
+    const queuePassengerCount = 20;
+    const latePassengerCount = 69;
+    const latePassengerColumns = 10;
     const trainPackedCapacity = 60;
     const trainPackedColumns = 10;
     const trainDepartureStopZ = 20;
     const trainDoorPassageHalfWidth = 0.95;
+    const trainDoorwayCrowdHalfWidth = 1.18;
     const trainDoorZ = -4.7;
 
     const player = createPerson({
@@ -833,7 +837,7 @@
 
     function createQueue() {
       const colors = [0x64748b, 0xbe123c, 0x166534, 0x9333ea, 0x334155, 0xb45309, 0x0f766e, 0x52525b];
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < queuePassengerCount; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x1f2937, skin: i % 3 === 0 ? 0xf0b38a : 0xffd3a4, scale: 0.98 + Math.random() * 0.08, bag: i % 2 === 0 });
         p.position.set(platformEdgeX + 1.25 + i * 0.38, 0, trainDoorZ + (Math.random() - 0.5) * 0.18);
         p.rotation.y = Math.PI / 2;
@@ -846,25 +850,25 @@
 
     function createLatePassengers() {
       const colors = [0x7c2d12, 0x155e75, 0x4c1d95, 0x14532d, 0x78350f, 0x334155];
-      for (let i = 0; i < 54; i++) {
+      for (let i = 0; i < latePassengerCount; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.92 + Math.random() * 0.1, bag: i % 3 === 0 });
-        const col = i % 9;
-        const row = Math.floor(i / 9);
-        const waitingX = platformEdgeX + 1.15 + col * 0.86 + (Math.random() - 0.5) * 0.34;
-        const waitingZ = trainDoorZ - 7.1 + row * 2.5 + (Math.random() - 0.5) * 0.72;
+        const col = i % latePassengerColumns;
+        const row = Math.floor(i / latePassengerColumns);
+        const waitingX = platformEdgeX + 1.08 + col * 0.76 + (Math.random() - 0.5) * 0.32;
+        const waitingZ = trainDoorZ - 7.45 + row * 2.18 + (Math.random() - 0.5) * 0.78;
         p.position.set(waitingX, 0, waitingZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.18;
         p.userData.doorOffset = new THREE.Vector3(
           platformEdgeX + 0.42 + (Math.random() - 0.5) * 0.62,
           0,
-          trainDoorZ + (Math.random() - 0.5) * 2.45
+          trainDoorZ + (Math.random() - 0.5) * 2.75
         );
         p.userData.boardOffset = new THREE.Vector3(
           trainInteriorWallX + 0.25 + Math.random() * 2.45,
           0,
-          trainDoorZ - 0.95 + (i % 6) * 0.36
+          trainDoorZ - 1.12 + (i % 7) * 0.34
         );
-        p.userData.rushDelay = 3.6 + Math.random() * 1.6;
+        p.userData.rushDelay = 3.45 + Math.random() * 1.75;
         scene.add(p);
         latePassengers.push(p);
       }
@@ -1259,7 +1263,9 @@
       }
       player.position.z = THREE.MathUtils.clamp(player.position.z, -19.5, 18.5);
 
-      const atOpenDoorway = Math.abs(player.position.z - currentTrainDoorZ()) < trainDoorPassageHalfWidth;
+      const doorDistanceZ = Math.abs(player.position.z - currentTrainDoorZ());
+      const atOpenDoorway = doorDistanceZ < trainDoorPassageHalfWidth;
+      const inDoorwayCrowd = doorDistanceZ < trainDoorwayCrowdHalfWidth && player.position.x < platformEdgeX + 0.65;
       const canPassThroughDoor = atOpenDoorway && state.doorsOpen >= 0.65 && !failed;
       if (player.position.x < platformEdgeX && !isPlayerInsideTrain() && !canPassThroughDoor) {
         player.position.x = platformEdgeX;
@@ -1267,46 +1273,56 @@
       }
 
       if (player.position.x < trainInteriorDoorX) {
-        // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
-        // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
+        // ドアを越えた直後も密集した乗客に当たり続けるようにし、
+        // 入口付近だけ急にすり抜けやすくならないよう通路幅だけを制限する。
         player.position.z = THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - trainInteriorPlayerHalfZ, currentTrainDoorZ() + trainInteriorPlayerHalfZ);
       }
 
-      const enteringThroughDoor = canPassThroughDoor;
+      const enteringThroughDoor = canPassThroughDoor || inDoorwayCrowd;
+      const xBeforeCrowdContact = player.position.x;
       let contactCount = 0;
       for (const p of queuePeople) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.46 : 0.54, enteringThroughDoor ? 0.16 : 0.24)) contactCount++;
+        if (pushApart(player, p, enteringThroughDoor ? 0.58 : 0.54, enteringThroughDoor ? 0.27 : 0.24)) contactCount++;
       }
       for (const p of latePassengers) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.44 : 0.5, enteringThroughDoor ? 0.15 : 0.2)) contactCount++;
+        if (pushApart(player, p, enteringThroughDoor ? 0.56 : 0.5, enteringThroughDoor ? 0.25 : 0.2)) contactCount++;
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (pushApart(player, p, insideTrain ? 0.56 : 0.5, insideTrain ? 0.16 : 0.14)) contactCount++;
+        const packedRadius = insideTrain || inDoorwayCrowd ? 0.6 : 0.5;
+        const packedStrength = insideTrain || inDoorwayCrowd ? 0.2 : 0.14;
+        if (pushApart(player, p, packedRadius, packedStrength)) contactCount++;
       }
       if (contactCount > 0) {
-        player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
+        if (inDoorwayCrowd && !isPlayerFullyInsideTrain() && player.position.x < xBeforeCrowdContact) {
+          // 後ろから来た乗客との接触だけで車内へ押し込まれすぎないよう、
+          // ドア付近では「押されて入る」成分を弱める。
+          player.position.x = THREE.MathUtils.lerp(player.position.x, xBeforeCrowdContact, 0.68);
+          player.userData.velocity.x = Math.max(player.userData.velocity.x, -0.18);
+        }
+        const jamSlowdown = inDoorwayCrowd ? 0.1 : 0;
+        player.userData.velocity.multiplyScalar(Math.max(0.34, 1 - contactCount * (0.08 + jamSlowdown)));
       }
     }
 
     function resolveCrowdContacts() {
       if (boarded || failed) return;
       const movingPassengers = queuePeople.concat(latePassengers);
-      resolvePassengerGroup(movingPassengers, 0.44, 0.55);
+      resolvePassengerGroup(movingPassengers, 0.47, 0.58);
 
       const visiblePacked = packedPeople.filter((p) => p.visible);
-      resolvePassengerGroup(visiblePacked, 0.48, 0.38);
+      resolvePassengerGroup(visiblePacked, 0.5, 0.42);
       for (const passenger of movingPassengers) {
         for (const packed of visiblePacked) {
-          resolvePassengerPair(passenger, packed, 0.48, 0.22, 0.12);
+          resolvePassengerPair(passenger, packed, 0.52, 0.25, 0.14);
         }
       }
 
       for (const passenger of movingPassengers) {
-        applyPassengerContact(passenger, 0.5, 0.2, 0.2);
+        applyPassengerContact(passenger, 0.54, 0.22, 0.24);
       }
       for (const passenger of visiblePacked) {
-        applyPassengerContact(passenger, insideTrain ? 0.52 : 0.46, 0.14, insideTrain ? 0.24 : 0.12);
+        applyPassengerContact(passenger, insideTrain ? 0.56 : 0.5, 0.16, insideTrain ? 0.28 : 0.16);
       }
       for (const passenger of movingPassengers) {
         constrainPassengerToTrainInterior(passenger);
