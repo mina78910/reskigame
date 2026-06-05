@@ -447,6 +447,7 @@
     const trainInteriorPadding = 0.22;
     const trainInteriorPassengerHalfZ = 2.25;
     const trainInteriorPlayerHalfZ = 1.55;
+    const trainPassengerBodyRadius = 0.42;
     const trainPackedCapacity = 60;
     const trainPackedColumns = 10;
     const trainDepartureStopZ = 20;
@@ -876,8 +877,9 @@
         const col = i % trainPackedColumns;
         const depthLane = col % 5;
         const zLane = row * 2 + Math.floor(col / 5);
-        const zStep = (trainInteriorPassengerHalfZ * 2) / 11;
-        const crowdedZ = trainDoorZ - trainInteriorPassengerHalfZ + zLane * zStep + (Math.random() - 0.5) * 0.06;
+        const usableHalfZ = trainInteriorPassengerHalfZ - trainPassengerBodyRadius;
+        const zStep = (usableHalfZ * 2) / 11;
+        const crowdedZ = trainDoorZ - usableHalfZ + zLane * zStep + (Math.random() - 0.5) * 0.06;
         p.position.set(trainInteriorWallX + 0.45 + depthLane * 0.62 + Math.random() * 0.05, 0.06, crowdedZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
         scene.add(p);
@@ -981,8 +983,8 @@
     }
 
     function isPassengerFullyInsideTrain(passenger, doorZ = currentTrainDoorZ()) {
-      return passenger.position.x < trainInteriorDoorX - trainInteriorPadding
-        && Math.abs(passenger.position.z - doorZ) <= trainInteriorPassengerHalfZ;
+      return passenger.position.x <= trainInteriorDoorX - trainPassengerBodyRadius
+        && Math.abs(passenger.position.z - doorZ) <= trainInteriorPassengerHalfZ - trainPassengerBodyRadius;
     }
 
     function isAtOpenTrainDoor(position, margin = 0) {
@@ -1002,8 +1004,8 @@
       const doorZ = currentTrainDoorZ();
       const insideCarLength = Math.abs(passenger.position.z - doorZ) < 14.25;
       if (!insideCarLength || passenger.position.x >= trainInteriorDoorX) return;
-      passenger.position.x = THREE.MathUtils.clamp(passenger.position.x, trainInteriorWallX + padding, trainInteriorDoorX - padding);
-      passenger.position.z = THREE.MathUtils.clamp(passenger.position.z, doorZ - trainInteriorPassengerHalfZ, doorZ + trainInteriorPassengerHalfZ);
+      passenger.position.x = THREE.MathUtils.clamp(passenger.position.x, trainInteriorWallX + padding, trainInteriorDoorX - trainPassengerBodyRadius);
+      passenger.position.z = THREE.MathUtils.clamp(passenger.position.z, doorZ - trainInteriorPassengerHalfZ + trainPassengerBodyRadius, doorZ + trainInteriorPassengerHalfZ - trainPassengerBodyRadius);
     }
 
     function settleDepartureCrowdPositions(includePlayer = false) {
