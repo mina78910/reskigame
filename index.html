@@ -980,6 +980,11 @@
       return passenger.position.x < trainInteriorDoorX && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
     }
 
+    function isPassengerFullyInsideTrain(passenger, doorZ = currentTrainDoorZ()) {
+      return passenger.position.x < trainInteriorDoorX - trainInteriorPadding
+        && Math.abs(passenger.position.z - doorZ) <= trainInteriorPassengerHalfZ;
+    }
+
     function isAtOpenTrainDoor(position, margin = 0) {
       return Math.abs(position.z - currentTrainDoorZ()) < trainDoorPassageHalfWidth + margin && state.doorsOpen >= 0.55 && !failed;
     }
@@ -1001,28 +1006,12 @@
       passenger.position.z = THREE.MathUtils.clamp(passenger.position.z, doorZ - trainInteriorPassengerHalfZ, doorZ + trainInteriorPassengerHalfZ);
     }
 
-    function pullDoorCrowdInsideTrain(includePlayer = false) {
-      const doorZ = currentTrainDoorZ();
-      queuePeople.concat(latePassengers).forEach((p, i) => {
-        const nearDoor = Math.abs(p.position.z - doorZ) < 2.75;
-        const atThreshold = p.position.x < platformEdgeX + 0.3;
-        if (!nearDoor || !atThreshold) return;
-        const depthLane = i % 6;
-        const zLane = Math.floor(i / 6) % 5;
-        p.position.x = Math.min(p.position.x, trainInteriorWallX + 0.38 + depthLane * 0.48);
-        p.position.z = doorZ - 1.0 + zLane * 0.42;
-        p.rotation.y = Math.PI / 2 + (depthLane - 2.5) * 0.08;
-        constrainPassengerToTrainInterior(p);
-      });
-      if (includePlayer) player.position.x = Math.min(player.position.x, -5.55);
-    }
-
     function settleDepartureCrowdPositions(includePlayer = false) {
-      pullDoorCrowdInsideTrain(includePlayer);
       queuePeople.concat(latePassengers).forEach((p) => {
-        if (p.position.x < trainInteriorDoorX) {
+        const nearDoor = Math.abs(p.position.z - currentTrainDoorZ()) < trainInteriorPassengerHalfZ + 0.8;
+        if (isPassengerFullyInsideTrain(p)) {
           constrainPassengerToTrainInterior(p);
-        } else if (p.position.x < platformEdgeX) {
+        } else if (nearDoor && p.position.x < platformEdgeX + 0.3) {
           p.position.x = platformEdgeX + 0.08;
         }
       });
@@ -1158,14 +1147,15 @@
 
     function moveOnboardCrowdWithTrain(deltaZ) {
       if (Math.abs(deltaZ) < 0.0001) return;
+      const previousDoorZ = currentTrainDoorZ() - deltaZ;
       for (const p of packedPeople) {
         if (p.visible) p.position.z += deltaZ;
       }
       for (const p of queuePeople) {
-        if (isPassengerInsideTrain(p) || p.position.x < trainInteriorDoorX) p.position.z += deltaZ;
+        if (isPassengerFullyInsideTrain(p, previousDoorZ)) p.position.z += deltaZ;
       }
       for (const p of latePassengers) {
-        if (isPassengerInsideTrain(p) || p.position.x < trainInteriorDoorX) p.position.z += deltaZ;
+        if (isPassengerFullyInsideTrain(p, previousDoorZ)) p.position.z += deltaZ;
       }
       if (boarded || isPlayerInsideTrain()) {
         player.position.z += deltaZ;
