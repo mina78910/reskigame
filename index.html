@@ -1009,12 +1009,23 @@
     }
 
     function settleDepartureCrowdPositions(includePlayer = false) {
-      queuePeople.concat(latePassengers).forEach((p) => {
-        const nearDoor = Math.abs(p.position.z - currentTrainDoorZ()) < trainInteriorPassengerHalfZ + 0.8;
-        if (isPassengerFullyInsideTrain(p)) {
+      const doorZ = currentTrainDoorZ();
+      queuePeople.concat(latePassengers).forEach((p, i) => {
+        if (p.userData.leftOnPlatform) return;
+        if (p.userData.onboardTrain || isPassengerFullyInsideTrain(p, doorZ)) {
+          p.userData.onboardTrain = true;
           constrainPassengerToTrainInterior(p);
-        } else if (nearDoor && p.position.x < platformEdgeX + 0.3) {
-          p.position.x = platformEdgeX + 0.08;
+          return;
+        }
+
+        const nearDepartureDoor = Math.abs(p.position.z - doorZ) < trainInteriorPassengerHalfZ + trainPassengerBodyRadius + 0.9;
+        const touchingTrainSide = p.position.x < platformEdgeX + trainPassengerBodyRadius + 0.55;
+        if (nearDepartureDoor && touchingTrainSide) {
+          p.userData.onboardTrain = false;
+          p.userData.leftOnPlatform = true;
+          p.position.x = platformEdgeX + 0.95 + (i % 4) * 0.18;
+          p.position.z = doorZ + ((i % 7) - 3) * 0.38;
+          p.rotation.y = Math.PI / 2;
         }
       });
       if (includePlayer && player.position.x < trainInteriorDoorX) {
@@ -1154,10 +1165,16 @@
         if (p.visible) p.position.z += deltaZ;
       }
       for (const p of queuePeople) {
-        if (isPassengerFullyInsideTrain(p, previousDoorZ)) p.position.z += deltaZ;
+        if (!p.userData.leftOnPlatform && (p.userData.onboardTrain || isPassengerFullyInsideTrain(p, previousDoorZ))) {
+          p.userData.onboardTrain = true;
+          p.position.z += deltaZ;
+        }
       }
       for (const p of latePassengers) {
-        if (isPassengerFullyInsideTrain(p, previousDoorZ)) p.position.z += deltaZ;
+        if (!p.userData.leftOnPlatform && (p.userData.onboardTrain || isPassengerFullyInsideTrain(p, previousDoorZ))) {
+          p.userData.onboardTrain = true;
+          p.position.z += deltaZ;
+        }
       }
       if (boarded || isPlayerInsideTrain()) {
         player.position.z += deltaZ;
