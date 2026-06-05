@@ -974,8 +974,13 @@
       return state.trainZ;
     }
 
+    function isPlayerFullyInsideTrain(doorZ = currentTrainDoorZ()) {
+      return player.position.x <= trainInteriorDoorX - trainPassengerBodyRadius
+        && Math.abs(player.position.z - doorZ) <= trainInteriorPlayerHalfZ;
+    }
+
     function isPlayerInsideTrain() {
-      return player.position.x < trainInteriorDoorX && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
+      return isPlayerFullyInsideTrain();
     }
 
     function isPassengerInsideTrain(passenger) {
@@ -1028,9 +1033,15 @@
           p.rotation.y = Math.PI / 2;
         }
       });
-      if (includePlayer && player.position.x < trainInteriorDoorX) {
-        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, trainInteriorDoorX - trainInteriorPadding);
-        player.position.z = THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - trainInteriorPlayerHalfZ, currentTrainDoorZ() + trainInteriorPlayerHalfZ);
+      const playerNearDoor = Math.abs(player.position.z - doorZ) < trainInteriorPlayerHalfZ + trainPassengerBodyRadius + 0.9;
+      const playerTouchingTrainSide = player.position.x < platformEdgeX + trainPassengerBodyRadius + 0.55;
+      if (includePlayer && isPlayerFullyInsideTrain(doorZ)) {
+        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, trainInteriorDoorX - trainPassengerBodyRadius);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, doorZ - trainInteriorPlayerHalfZ, doorZ + trainInteriorPlayerHalfZ);
+      } else if (!includePlayer && playerNearDoor && playerTouchingTrainSide && !isPlayerFullyInsideTrain(doorZ)) {
+        player.position.x = platformEdgeX + 0.58;
+        player.position.z = doorZ;
+        player.userData.velocity.set(0, 0, 0);
       }
     }
 
