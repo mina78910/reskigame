@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>東西線 乗車シミュレーター</title>
+  <title>通勤ラッシュ。地獄の東西線</title>
   <style>
     html, body {
       width: 100%;
@@ -287,6 +287,17 @@
         border-radius: 22px;
       }
 
+      .eyebrow {
+        letter-spacing: 0.16em;
+        font-size: 0.74rem;
+      }
+
+      h1 {
+        font-size: clamp(1.95rem, 9vw, 3rem);
+        line-height: 1.12;
+        letter-spacing: -0.03em;
+      }
+
       .lead {
         margin-top: 14px;
         font-size: 0.95rem;
@@ -343,6 +354,31 @@
       #hint { display: none; }
     }
 
+    @media (max-width: 380px) {
+      #start-screen {
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .start-card {
+        width: min(360px, 95vw);
+        padding: 18px 14px;
+      }
+
+      h1 {
+        font-size: clamp(1.72rem, 8.6vw, 2.25rem);
+      }
+
+      .lead {
+        font-size: 0.88rem;
+      }
+
+      .start-button {
+        margin-top: 20px;
+        padding: 12px 18px;
+      }
+    }
+
     @media (max-height: 620px) and (orientation: landscape) {
       .start-card {
         max-height: calc(100dvh - 20px);
@@ -361,7 +397,7 @@
   <div id="start-screen">
     <div class="start-card">
       <p class="eyebrow">TERRA TECH FIRST DAY</p>
-      <h1>東西線<br>乗車チャレンジ</h1>
+      <h1>通勤ラッシュ。<br>地獄の東西線</h1>
       <p class="lead">今日は4/1、テラテク入社初日、この電車に乗らないと遅刻が決定してしまう</p>
       <div class="start-button">クリック / タップで開始 →</div>
       <div class="controls">
@@ -452,9 +488,9 @@
     const trainInteriorPassengerHalfZ = 2.25;
     const trainInteriorPlayerHalfZ = 1.55;
     const trainPassengerBodyRadius = 0.42;
-    const queuePassengerCount = 20;
-    const latePassengerCount = 69;
-    const latePassengerColumns = 10;
+    const queuePassengerCount = 24;
+    const latePassengerCount = 96;
+    const latePassengerColumns = 12;
     const trainPackedCapacity = 60;
     const trainPackedColumns = 10;
     const trainDepartureStopZ = 20;
@@ -835,7 +871,7 @@
       const colors = [0x64748b, 0xbe123c, 0x166534, 0x9333ea, 0x334155, 0xb45309, 0x0f766e, 0x52525b];
       for (let i = 0; i < queuePassengerCount; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x1f2937, skin: i % 3 === 0 ? 0xf0b38a : 0xffd3a4, scale: 0.98 + Math.random() * 0.08, bag: i % 2 === 0 });
-        p.position.set(platformEdgeX + 1.25 + i * 0.38, 0, trainDoorZ + (Math.random() - 0.5) * 0.18);
+        p.position.set(platformEdgeX + 1.25 + i * 0.32, 0, trainDoorZ + (Math.random() - 0.5) * 0.18);
         p.rotation.y = Math.PI / 2;
         p.userData.queueIndex = i;
         scene.add(p);
@@ -850,8 +886,8 @@
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.92 + Math.random() * 0.1, bag: i % 3 === 0 });
         const col = i % latePassengerColumns;
         const row = Math.floor(i / latePassengerColumns);
-        const waitingX = platformEdgeX + 1.08 + col * 0.76 + (Math.random() - 0.5) * 0.32;
-        const waitingZ = trainDoorZ - 7.45 + row * 2.18 + (Math.random() - 0.5) * 0.78;
+        const waitingX = platformEdgeX + 1.02 + col * 0.64 + (Math.random() - 0.5) * 0.28;
+        const waitingZ = trainDoorZ - 7.8 + row * 1.56 + (Math.random() - 0.5) * 0.7;
         p.position.set(waitingX, 0, waitingZ);
         p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.18;
         p.userData.doorOffset = new THREE.Vector3(
@@ -915,12 +951,12 @@
     function updateQueue(delta) {
       const canBoard = state.phase === 'boarding' || state.phase === 'closing';
       queuePeople.forEach((p, i) => {
-        const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.34);
+        const phaseOffset = Math.max(0, elapsed - 3.7 - i * 0.27);
         if (canBoard && phaseOffset > 0) {
           const t = Math.min(1, phaseOffset / 4.2);
           p.userData.prevX = p.position.x;
           p.userData.prevZ = p.position.z;
-          const startX = platformEdgeX + 1.25 + i * 0.38;
+          const startX = platformEdgeX + 1.25 + i * 0.32;
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = Math.PI / 2;
