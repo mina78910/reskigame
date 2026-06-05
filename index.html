@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>東西線 最後尾乗車シミュレーター</title>
+  <title>東西線 乗車シミュレーター</title>
   <style>
     html, body {
       width: 100%;
@@ -175,16 +175,19 @@
       top: 50%;
       z-index: 14;
       transform: translate(-50%, -50%) scale(0.86);
-      padding: clamp(20px, 5vw, 38px) clamp(34px, 8vw, 74px);
+      width: min(760px, calc(100vw - 32px));
+      box-sizing: border-box;
+      padding: clamp(20px, 5vw, 38px) clamp(22px, 6vw, 54px);
       border-radius: 28px;
       color: #07111f;
       background: linear-gradient(135deg, rgba(250, 204, 21, 0.96), rgba(56, 189, 248, 0.96));
       border: 2px solid rgba(255, 255, 255, 0.72);
       box-shadow: 0 28px 90px rgba(2, 6, 23, 0.46), inset 0 1px rgba(255, 255, 255, 0.55);
-      font-size: clamp(3.4rem, 14vw, 8.5rem);
+      font-size: clamp(1.65rem, 5.2vw, 3.7rem);
       font-weight: 1000;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      line-height: 1.28;
+      text-align: center;
       text-shadow: 0 3px 0 rgba(255, 255, 255, 0.34);
       opacity: 0;
       pointer-events: none;
@@ -357,13 +360,13 @@
 <body>
   <div id="start-screen">
     <div class="start-card">
-      <p class="eyebrow">TOZAI LINE QUEUE</p>
-      <h1>東西線<br>最後尾乗車</h1>
-      <p class="lead">ホームの行列の最後尾からスタート。ゲーム開始と同時に、とんでもなく窮屈な電車がホームへ入ってきます。自分の分身を操作して、列の流れに合わせて乗車してください。</p>
+      <p class="eyebrow">TERRA TECH FIRST DAY</p>
+      <h1>東西線<br>乗車チャレンジ</h1>
+      <p class="lead">今日は4/1、テラテク入社初日、この電車に乗らないと遅刻が決定してしまう</p>
       <div class="start-button">クリック / タップで開始 →</div>
       <div class="controls">
         <span>WASD / 矢印：移動</span>
-        <span>視点：前方へ自動追従</span>
+        <span>目標：遅刻せずリスキへ向かう</span>
         <span>スマホ：左下スティック</span>
       </div>
     </div>
@@ -372,10 +375,10 @@
   <div id="coords">X: 0.00<br>Y: 0.00<br>Z: 0.00</div>
   <div id="hud">
     <div id="phase">電車入線中</div>
-    <div id="message">東西線がすぐにホームへ入ってくる。列の最後尾からドアへ向かおう。</div>
+    <div id="message">東西線がすぐにホームへ入ってくる。この電車に乗らないと遅刻が決定してしまう。</div>
   </div>
-  <div id="hint">青い人物があなたです。視点は自動で進行方向を見ます。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
-  <div id="clear-banner">Clear!</div>
+  <div id="hint">青い人物があなたです。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
+  <div id="clear-banner">ふうっ。。。なんとか無事リスキに遅刻せず到着しそうだ！！</div>
   <div id="announcement">まもなくドアが閉まります。ご注意ください。</div>
   <button id="restart-button" type="button">もう一度プレイ</button>
   <div id="joystick-zone"></div>
@@ -588,13 +591,6 @@
       sign.rotation.y = -Math.PI / 2;
       scene.add(sign);
 
-      const lastSign = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.9, 0.82),
-        new THREE.MeshBasicMaterial({ map: createTextTexture('最後尾', { background: '#f59e0b', color: '#111827', size: 56 }) })
-      );
-      lastSign.position.set(2.1, 2.05, 9.35);
-      lastSign.rotation.y = Math.PI * 0.04;
-      scene.add(lastSign);
     }
 
     function createTrain() {
@@ -1086,8 +1082,8 @@
       phaseEl.textContent = '乗車完了';
       document.body.classList.remove('failed');
       document.body.classList.add('cleared');
-      clearBannerEl.textContent = 'Clear!';
-      messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
+      clearBannerEl.textContent = 'ふうっ。。。なんとか無事リスキに遅刻せず到着しそうだ！！';
+      messageEl.textContent = 'ふうっ。。。なんとか無事リスキに遅刻せず到着しそうだ！！';
       settleDepartureCrowdPositions(true);
       showRestartButton();
     }
@@ -1097,8 +1093,8 @@
 
       if (failed) {
         state.phase = 'failed';
-        phaseEl.textContent = '乗車失敗';
-        messageEl.textContent = 'ドアが閉まり、電車は発車した。最後尾のあなたはホームに取り残されてしまった。';
+        phaseEl.textContent = 'MISS';
+        messageEl.textContent = '乗車失敗。遅刻が確定した。。。';
         showRestartButton();
         return;
       }
@@ -1107,7 +1103,7 @@
         state.phase = 'boarded';
         phaseEl.textContent = '乗車完了';
         document.body.classList.add('cleared');
-        messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
+        messageEl.textContent = 'ふうっ。。。なんとか無事リスキに遅刻せず到着しそうだ！！';
         showRestartButton();
         return;
       }
@@ -1115,7 +1111,7 @@
       if (elapsed < 3.1) {
         state.phase = 'arriving';
         phaseEl.textContent = '電車入線中';
-        messageEl.textContent = '東西線がすぐにホームへ滑り込んでくる。列の最後尾からドアへ向かおう。';
+        messageEl.textContent = '東西線がすぐにホームへ滑り込んでくる。この電車に乗らないと遅刻が決定してしまう。';
         return;
       }
 
@@ -1134,8 +1130,8 @@
           failed = true;
           state.phase = 'failed';
           document.body.classList.add('failed');
-          phaseEl.textContent = '乗車失敗';
-          messageEl.textContent = 'ドアが閉まり、電車は発車した。最後尾のあなたはホームに取り残されてしまった。';
+          phaseEl.textContent = 'MISS';
+          messageEl.textContent = '乗車失敗。遅刻が確定した。。。';
           showRestartButton();
         }
         return;
