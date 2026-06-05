@@ -169,6 +169,33 @@
       color: #fff7ed;
     }
 
+    #clear-banner {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      z-index: 14;
+      transform: translate(-50%, -50%) scale(0.86);
+      padding: clamp(20px, 5vw, 38px) clamp(34px, 8vw, 74px);
+      border-radius: 28px;
+      color: #07111f;
+      background: linear-gradient(135deg, rgba(250, 204, 21, 0.96), rgba(56, 189, 248, 0.96));
+      border: 2px solid rgba(255, 255, 255, 0.72);
+      box-shadow: 0 28px 90px rgba(2, 6, 23, 0.46), inset 0 1px rgba(255, 255, 255, 0.55);
+      font-size: clamp(3.4rem, 14vw, 8.5rem);
+      font-weight: 1000;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-shadow: 0 3px 0 rgba(255, 255, 255, 0.34);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.2, 1.35, 0.38, 1);
+    }
+
+    .cleared #clear-banner {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
     #announcement {
       position: fixed;
       left: 50%;
@@ -216,11 +243,12 @@
 
     #joystick-zone {
       position: fixed;
-      left: 0;
+      left: 50%;
       bottom: 0;
       z-index: 9;
       width: min(46vw, 230px);
       height: min(42vh, 230px);
+      transform: translateX(-50%);
       touch-action: none;
       display: none;
     }
@@ -347,6 +375,7 @@
     <div id="message">東西線がすぐにホームへ入ってくる。列の最後尾からドアへ向かおう。</div>
   </div>
   <div id="hint">青い人物があなたです。視点は自動で進行方向を見ます。ドアへ向かって歩き続けると、その分だけ少しずつ車内へ入れます。</div>
+  <div id="clear-banner">Clear!</div>
   <div id="announcement">まもなくドアが閉まります。ご注意ください。</div>
   <button id="restart-button" type="button">もう一度プレイ</button>
   <div id="joystick-zone"></div>
@@ -362,6 +391,7 @@
     const coordsEl = document.getElementById('coords');
     const messageEl = document.getElementById('message');
     const announcementEl = document.getElementById('announcement');
+    const clearBannerEl = document.getElementById('clear-banner');
     const restartButton = document.getElementById('restart-button');
     const timerEl = document.getElementById('timer');
 
@@ -396,6 +426,7 @@
     let insideTrain = false;
     let boarded = false;
     let failed = false;
+    let departureCrowdFinalized = false;
 
     const state = {
       trainZ: -30,
@@ -412,6 +443,16 @@
     const platformEdgeX = -4.35;
     const platformWallX = 5.05;
     const trainFloorX = -5.25;
+    const trainInteriorWallX = -8.45;
+    const trainInteriorDoorX = -5.05;
+    const trainInteriorPadding = 0.22;
+    const trainInteriorPassengerHalfZ = 2.25;
+    const trainInteriorPlayerHalfZ = 1.55;
+    const trainPassengerBodyRadius = 0.42;
+    const trainPackedCapacity = 60;
+    const trainPackedColumns = 10;
+    const trainDepartureStopZ = 20;
+    const trainDoorPassageHalfWidth = 0.95;
     const trainDoorZ = -4.7;
 
     const player = createPerson({
@@ -485,7 +526,7 @@
     }
 
     function createStation() {
-      const floor = makeBox(10, 0.18, 70, 0x263244, 0.9);
+      const floor = makeBox(10, 0.18, 70, 0xf8fafc, 0.82);
       floor.position.set(0.35, -0.09, -6);
       scene.add(floor);
 
@@ -512,7 +553,7 @@
       backWall.position.set(platformWallX, 2.0, -6);
       scene.add(backWall);
 
-      const ceiling = makeBox(10.7, 0.22, 70, 0x6b7280, 0.92);
+      const ceiling = makeBox(10.7, 0.22, 70, 0xf8fafc, 0.86);
       ceiling.position.set(0.25, 4.35, -6);
       scene.add(ceiling);
 
@@ -554,16 +595,61 @@
 
     function createTrain() {
       const group = new THREE.Group();
-      const shellMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.45, metalness: 0.18, transparent: true, opacity: 0.34, depthWrite: false });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(3.65, 3.2, 30), shellMat);
-      body.position.set(0, 1.62, 0);
-      body.castShadow = true;
-      body.receiveShadow = true;
-      group.add(body);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0xb8c0c8, roughness: 0.28, metalness: 0.36 });
+      const darkTrimMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.42, metalness: 0.22 });
+      const tozaiSkyLineMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.34, metalness: 0.08 });
+      const tozaiBlueLineMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.34, metalness: 0.08 });
 
-      const stripe = makeBox(3.72, 0.18, 30.08, 0xffffff, 0.35, 0.05);
-      stripe.position.set(0.02, 2.42, 0);
-      group.add(stripe);
+      const exteriorParts = [
+        { size: [3.65, 0.18, 30], position: [0, 3.23, 0], material: bodyMat },
+        { size: [3.65, 0.2, 30], position: [0, 0.02, 0], material: darkTrimMat },
+        { size: [0.16, 3.05, 30], position: [-1.83, 1.58, 0], material: bodyMat },
+        { size: [3.65, 3.05, 0.18], position: [0, 1.58, -15], material: bodyMat },
+        { size: [3.65, 3.05, 0.18], position: [0, 1.58, 15], material: bodyMat },
+        { size: [0.16, 0.62, 30], position: [1.86, 0.45, 0], material: bodyMat },
+        { size: [0.16, 0.5, 30], position: [1.86, 2.78, 0], material: bodyMat },
+        { size: [0.16, 1.62, 12.2], position: [1.86, 1.62, -8.4], material: bodyMat },
+        { size: [0.16, 1.62, 12.2], position: [1.86, 1.62, 8.4], material: bodyMat }
+      ];
+      exteriorParts.forEach(({ size, position, material }) => {
+        const part = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+        part.position.set(...position);
+        part.castShadow = true;
+        part.receiveShadow = true;
+        group.add(part);
+      });
+
+      const roofRound = new THREE.Mesh(new THREE.CylinderGeometry(1.82, 1.82, 30, 24, 1, false, 0, Math.PI), bodyMat);
+      roofRound.position.set(0, 3.19, 0);
+      roofRound.rotation.z = Math.PI / 2;
+      roofRound.rotation.y = Math.PI / 2;
+      roofRound.scale.y = 0.16;
+      roofRound.castShadow = true;
+      roofRound.receiveShadow = true;
+      group.add(roofRound);
+
+      const stripeSegments = [
+        { z: -8.35, d: 12.25 },
+        { z: 8.35, d: 12.25 }
+      ];
+      stripeSegments.forEach(({ z, d }) => {
+        [
+          { y: 1.47, height: 0.12, material: tozaiSkyLineMat },
+          { y: 1.29, height: 0.16, material: tozaiBlueLineMat }
+        ].forEach(({ y, height, material }) => {
+          const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.055, height, d), material);
+          stripe.position.set(1.965, y, z);
+          stripe.castShadow = true;
+          stripe.receiveShadow = true;
+          group.add(stripe);
+        });
+      });
+
+      for (const z of [-12, 12]) {
+        const headlight = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 10), new THREE.MeshStandardMaterial({ color: 0xfef3c7, emissive: 0xfbbf24, emissiveIntensity: 0.65, roughness: 0.22 }));
+        headlight.position.set(1.92, 1.85, z);
+        group.add(headlight);
+      }
 
       const interiorFloor = makeBox(3.05, 0.08, 28.5, 0xd6d3d1, 0.82);
       interiorFloor.position.set(0.08, 0.08, 0);
@@ -599,13 +685,19 @@
         }
       }
 
+      const windowMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.08, metalness: 0.02, transparent: true, opacity: 0.72 });
       for (let z = -12; z <= 12; z += 4) {
-        const window = makeBox(0.07, 0.88, 1.55, 0x7dd3fc, 0.15, 0.05);
-        window.position.set(1.9, 2.18, z + 1.62);
+        const windowFrame = makeBox(0.1, 1.02, 1.72, 0xcbd5e1, 0.34, 0.12);
+        windowFrame.position.set(1.915, 2.18, z + 1.62);
+        group.add(windowFrame);
+        const window = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.84, 1.46), windowMat);
+        window.position.set(1.965, 2.18, z + 1.62);
+        window.castShadow = true;
+        window.receiveShadow = true;
         group.add(window);
       }
 
-      const frameMatColor = 0xf8fafc;
+      const frameMatColor = 0xcbd5e1;
       const doorTopFrame = makeBox(0.12, 0.16, 2.68, frameMatColor, 0.42);
       doorTopFrame.position.set(1.94, 2.42, 0);
       group.add(doorTopFrame);
@@ -615,12 +707,24 @@
         group.add(sideFrame);
       }
 
-      const leftDoor = makeBox(0.13, 2.12, 1.18, 0x0284c7, 0.34, 0.12);
+      const leftDoor = makeBox(0.13, 2.12, 1.18, 0xaeb8c2, 0.3, 0.28);
       leftDoor.position.set(2.02, 1.23, -0.62);
       group.add(leftDoor);
-      const rightDoor = makeBox(0.13, 2.12, 1.18, 0x0284c7, 0.34, 0.12);
+      const rightDoor = makeBox(0.13, 2.12, 1.18, 0xaeb8c2, 0.3, 0.28);
       rightDoor.position.set(2.02, 1.23, 0.62);
       group.add(rightDoor);
+      [leftDoor, rightDoor].forEach((door) => {
+        [
+          { y: 0.24, height: 0.12, material: tozaiSkyLineMat },
+          { y: 0.06, height: 0.16, material: tozaiBlueLineMat }
+        ].forEach(({ y, height, material }) => {
+          const doorStripe = new THREE.Mesh(new THREE.BoxGeometry(0.035, height, 1.08), material);
+          doorStripe.position.set(0.08, y, 0);
+          doorStripe.castShadow = true;
+          doorStripe.receiveShadow = true;
+          door.add(doorStripe);
+        });
+      });
       doors.push({ leftDoor, rightDoor });
 
       const destination = new THREE.Mesh(
@@ -756,7 +860,7 @@
           trainDoorZ + (Math.random() - 0.5) * 2.45
         );
         p.userData.boardOffset = new THREE.Vector3(
-          -5.45 - Math.random() * 0.5,
+          trainInteriorWallX + 0.25 + Math.random() * 2.45,
           0,
           trainDoorZ - 0.95 + (i % 6) * 0.36
         );
@@ -768,15 +872,35 @@
 
     function createPackedCar() {
       const colors = [0x0f172a, 0x475569, 0x7f1d1d, 0x1e40af, 0x365314, 0x581c87];
-      for (let i = 0; i < 58; i++) {
+      for (let i = 0; i < trainPackedCapacity; i++) {
         const p = createPerson({ jacket: colors[i % colors.length], pants: 0x111827, skin: i % 4 === 0 ? 0xe7a97b : 0xffd3a4, scale: 0.9 + Math.random() * 0.12, bag: i % 5 === 0 });
-        const row = Math.floor(i / 10);
-        const col = i % 10;
-        p.position.set(-5.72 - Math.random() * 0.82, 0.06, -8.7 + row * 2.65 + (col - 4.5) * 0.28);
-        p.rotation.y = Math.PI / 2 + (Math.random() - 0.5) * 0.75;
+        placePackedPassenger(p, i, trainDoorZ);
         scene.add(p);
         packedPeople.push(p);
       }
+    }
+
+    function placePackedPassenger(passenger, index, doorZ) {
+      const row = Math.floor(index / trainPackedColumns);
+      const col = index % trainPackedColumns;
+      const depthLane = col % 5;
+      const zLane = row * 2 + Math.floor(col / 5);
+      const usableHalfZ = trainInteriorPassengerHalfZ - trainPassengerBodyRadius;
+      const zStep = (usableHalfZ * 2) / 11;
+      const packedX = trainInteriorWallX + 0.45 + depthLane * 0.62 + ((index * 17) % 11) * 0.004;
+      const packedZ = doorZ - usableHalfZ + zLane * zStep + (((index * 23) % 9) - 4) * 0.006;
+      passenger.position.set(packedX, 0.06, packedZ);
+      passenger.rotation.y = Math.PI / 2 + ((((index * 13) % 17) - 8) / 8) * 0.34;
+      passenger.visible = state.trainZ > -9;
+      if (!passenger.parent) scene.add(passenger);
+    }
+
+    function redrawPackedCarForDeparture() {
+      const doorZ = currentTrainDoorZ();
+      packedPeople.forEach((p, i) => {
+        placePackedPassenger(p, i, doorZ);
+        constrainPassengerToTrainInterior(p);
+      });
     }
 
     function updateTrainPosition() {
@@ -800,6 +924,7 @@
           p.position.x = THREE.MathUtils.lerp(startX, -5.55, easeInOut(t));
           p.position.z = THREE.MathUtils.lerp(trainDoorZ, trainDoorZ - 0.85 + (i % 5) * 0.42, easeInOut(t));
           p.rotation.y = Math.PI / 2;
+          constrainPassengerBoardingPath(p);
           blockPassengerBehindPlayer(p, 0.48, 0.78);
           applyPassengerContact(p, 0.52, 0.26, 0.2);
         }
@@ -850,6 +975,7 @@
           p.position.z += (dz / dist) * step;
           p.rotation.y = Math.atan2(-dx, -dz);
         }
+        constrainPassengerBoardingPath(p);
         blockPassengerBehindPlayer(p, 0.44, 0.92);
         applyPassengerContact(p, 0.5, 0.22, 0.22);
         p.position.y = Math.sin(elapsed * 7 + i) * 0.018;
@@ -864,12 +990,102 @@
       return state.trainZ;
     }
 
+    function isPlayerFullyInsideTrain(doorZ = currentTrainDoorZ()) {
+      return player.position.x <= trainInteriorDoorX - trainPassengerBodyRadius
+        && Math.abs(player.position.z - doorZ) <= trainInteriorPlayerHalfZ;
+    }
+
     function isPlayerInsideTrain() {
-      return player.position.x < -5.05 && Math.abs(player.position.z - currentTrainDoorZ()) < 2.25;
+      return isPlayerFullyInsideTrain();
     }
 
     function isPassengerInsideTrain(passenger) {
-      return passenger.position.x < -5.05 && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
+      return passenger.position.x < trainInteriorDoorX && Math.abs(passenger.position.z - currentTrainDoorZ()) < 2.45;
+    }
+
+    function isPassengerFullyInsideTrain(passenger, doorZ = currentTrainDoorZ()) {
+      return passenger.position.x <= trainInteriorDoorX - trainPassengerBodyRadius
+        && Math.abs(passenger.position.z - doorZ) <= trainInteriorPassengerHalfZ - trainPassengerBodyRadius;
+    }
+
+    function isAtOpenTrainDoor(position, margin = 0) {
+      return Math.abs(position.z - currentTrainDoorZ()) < trainDoorPassageHalfWidth + margin && state.doorsOpen >= 0.55 && !failed;
+    }
+
+    function constrainPassengerBoardingPath(passenger) {
+      const previousX = passenger.userData.prevX ?? passenger.position.x;
+      const crossedPlatformEdge = previousX >= platformEdgeX && passenger.position.x < platformEdgeX;
+      const betweenTrainAndPlatform = passenger.position.x < platformEdgeX && passenger.position.x > trainInteriorDoorX;
+      if ((crossedPlatformEdge || betweenTrainAndPlatform) && !isAtOpenTrainDoor(passenger.position, 0.12)) {
+        passenger.position.x = platformEdgeX;
+      }
+    }
+
+    function constrainPassengerToTrainInterior(passenger, padding = trainInteriorPadding) {
+      const doorZ = currentTrainDoorZ();
+      const insideCarLength = Math.abs(passenger.position.z - doorZ) < 14.25;
+      if (!insideCarLength || passenger.position.x >= trainInteriorDoorX) return;
+      passenger.position.x = THREE.MathUtils.clamp(passenger.position.x, trainInteriorWallX + padding, trainInteriorDoorX - trainPassengerBodyRadius);
+      passenger.position.z = THREE.MathUtils.clamp(passenger.position.z, doorZ - trainInteriorPassengerHalfZ + trainPassengerBodyRadius, doorZ + trainInteriorPassengerHalfZ - trainPassengerBodyRadius);
+    }
+
+    function removePassengerFromDeparture(passenger) {
+      passenger.userData.onboardTrain = true;
+      passenger.userData.leftOnPlatform = false;
+      passenger.userData.removedAfterBoarding = true;
+      passenger.visible = false;
+      scene.remove(passenger);
+    }
+
+    function keepPassengerOnPlatform(passenger, index, doorZ) {
+      passenger.userData.onboardTrain = false;
+      passenger.userData.leftOnPlatform = true;
+      passenger.userData.removedAfterBoarding = false;
+      if (!passenger.parent) scene.add(passenger);
+      passenger.visible = true;
+      const nearDoorZ = Math.abs(passenger.position.z - doorZ) < trainInteriorPassengerHalfZ + trainPassengerBodyRadius + 0.8;
+      const touchingTrainSide = passenger.position.x < platformEdgeX + trainPassengerBodyRadius + 0.55;
+      if (nearDoorZ && touchingTrainSide) {
+        passenger.position.x = platformEdgeX + 0.95 + (index % 4) * 0.18;
+        passenger.position.z = doorZ + ((index % 7) - 3) * 0.38;
+        passenger.rotation.y = Math.PI / 2;
+      }
+    }
+
+    function settleDepartureCrowdPositions(includePlayer = false) {
+      if (departureCrowdFinalized) return;
+      departureCrowdFinalized = true;
+      const doorZ = currentTrainDoorZ();
+      redrawPackedCarForDeparture();
+      queuePeople.concat(latePassengers).forEach((p, i) => {
+        if (isPassengerFullyInsideTrain(p, doorZ)) {
+          removePassengerFromDeparture(p);
+        } else {
+          keepPassengerOnPlatform(p, i, doorZ);
+        }
+      });
+      const playerNearDoor = Math.abs(player.position.z - doorZ) < trainInteriorPlayerHalfZ + trainPassengerBodyRadius + 0.9;
+      const playerTouchingTrainSide = player.position.x < platformEdgeX + trainPassengerBodyRadius + 0.55;
+      if (includePlayer && isPlayerFullyInsideTrain(doorZ)) {
+        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, trainInteriorDoorX - trainPassengerBodyRadius);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, doorZ - trainInteriorPlayerHalfZ, doorZ + trainInteriorPlayerHalfZ);
+      } else if (!includePlayer && playerNearDoor && playerTouchingTrainSide && !isPlayerFullyInsideTrain(doorZ)) {
+        player.position.x = platformEdgeX + 0.58;
+        player.position.z = doorZ;
+        player.userData.velocity.set(0, 0, 0);
+      }
+    }
+
+    function completeBoarding() {
+      boarded = true;
+      state.phase = 'boarded';
+      phaseEl.textContent = '乗車完了';
+      document.body.classList.remove('failed');
+      document.body.classList.add('cleared');
+      clearBannerEl.textContent = 'Clear!';
+      messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
+      settleDepartureCrowdPositions(true);
+      showRestartButton();
     }
 
     function updatePhase() {
@@ -886,6 +1102,7 @@
       if (boarded) {
         state.phase = 'boarded';
         phaseEl.textContent = '乗車完了';
+        document.body.classList.add('cleared');
         messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
         showRestartButton();
         return;
@@ -907,13 +1124,9 @@
 
       if (elapsed >= 17) {
         if (insideTrain) {
-          boarded = true;
-          state.phase = 'boarded';
-          phaseEl.textContent = '乗車完了';
-          document.body.classList.remove('failed');
-          messageEl.textContent = 'ドアが閉まりきった。電車が発車し、あなたは車内からホームを離れていく。';
-          showRestartButton();
+          completeBoarding();
         } else {
+          settleDepartureCrowdPositions(false);
           failed = true;
           state.phase = 'failed';
           document.body.classList.add('failed');
@@ -959,8 +1172,13 @@
     function updateTrain(delta) {
       const previousTrainZ = state.trainZ;
       if (boarded || failed) {
-        state.departureSpeed = THREE.MathUtils.damp(state.departureSpeed, 8.5, 1.8, delta);
-        state.trainZ += state.departureSpeed * delta;
+        if (state.trainZ < trainDepartureStopZ) {
+          state.departureSpeed = THREE.MathUtils.damp(state.departureSpeed, 8.5, 1.8, delta);
+          state.trainZ = Math.min(trainDepartureStopZ, state.trainZ + state.departureSpeed * delta);
+        } else {
+          state.trainZ = trainDepartureStopZ;
+          state.departureSpeed = 0;
+        }
       } else if (state.trainZ < state.trainTargetZ) {
         state.trainZ = THREE.MathUtils.damp(state.trainZ, state.trainTargetZ, 1.75, delta);
         state.rumble = Math.max(state.rumble, 0.9);
@@ -977,6 +1195,7 @@
       packedPeople.forEach((p, i) => {
         p.position.y = 0.06 + Math.sin(state.crowdPulse * 4.5 + i * 0.77) * 0.025;
         p.rotation.z = Math.sin(state.crowdPulse * 2.4 + i) * 0.035;
+        constrainPassengerToTrainInterior(p);
       });
     }
 
@@ -986,10 +1205,14 @@
         if (p.visible) p.position.z += deltaZ;
       }
       for (const p of queuePeople) {
-        if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
+        if (!p.userData.removedAfterBoarding && p.userData.onboardTrain && p.visible) {
+          p.position.z += deltaZ;
+        }
       }
       for (const p of latePassengers) {
-        if (isPassengerInsideTrain(p) || p.position.x < -5.05) p.position.z += deltaZ;
+        if (!p.userData.removedAfterBoarding && p.userData.onboardTrain && p.visible) {
+          p.position.z += deltaZ;
+        }
       }
       if (boarded || isPlayerInsideTrain()) {
         player.position.z += deltaZ;
@@ -1032,24 +1255,24 @@
       } else if (state.doorsOpen < 0.55 && !isPlayerInsideTrain()) {
         player.position.x = THREE.MathUtils.clamp(player.position.x, -3.45, platformWallX - 0.45);
       } else {
-        player.position.x = THREE.MathUtils.clamp(player.position.x, -6.55, platformWallX - 0.45);
+        player.position.x = THREE.MathUtils.clamp(player.position.x, trainInteriorWallX + 0.18, platformWallX - 0.45);
       }
       player.position.z = THREE.MathUtils.clamp(player.position.z, -19.5, 18.5);
 
-      if (player.position.x < platformEdgeX && state.doorsOpen < 0.65 && !isPlayerInsideTrain()) player.position.x = platformEdgeX;
-
-      const atDoor = Math.abs(player.position.z - trainDoorZ) < 1.7;
-      if (player.position.x < platformEdgeX && !atDoor && !insideTrain) {
+      const atOpenDoorway = Math.abs(player.position.z - currentTrainDoorZ()) < trainDoorPassageHalfWidth;
+      const canPassThroughDoor = atOpenDoorway && state.doorsOpen >= 0.65 && !failed;
+      if (player.position.x < platformEdgeX && !isPlayerInsideTrain() && !canPassThroughDoor) {
         player.position.x = platformEdgeX;
+        player.userData.velocity.x = Math.max(0, player.userData.velocity.x);
       }
 
-      if (player.position.x < -5.05) {
+      if (player.position.x < trainInteriorDoorX) {
         // 電車内に入った後は、混雑表現で弾き返さず、通路幅の中だけに収める。
         // ドアへ歩き続けた分だけ奥へ進めるようにして、細かい難易度はここでは持たせない。
-        player.position.z = THREE.MathUtils.clamp(player.position.z, -6.35, -2.7);
+        player.position.z = THREE.MathUtils.clamp(player.position.z, currentTrainDoorZ() - trainInteriorPlayerHalfZ, currentTrainDoorZ() + trainInteriorPlayerHalfZ);
       }
 
-      const enteringThroughDoor = atDoor && state.doorsOpen >= 0.55 && !failed;
+      const enteringThroughDoor = canPassThroughDoor;
       let contactCount = 0;
       for (const p of queuePeople) {
         if (pushApart(player, p, enteringThroughDoor ? 0.46 : 0.54, enteringThroughDoor ? 0.16 : 0.24)) contactCount++;
@@ -1059,7 +1282,7 @@
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        if (pushApart(player, p, insideTrain ? 0.38 : 0.44, insideTrain ? 0.08 : 0.11)) contactCount++;
+        if (pushApart(player, p, insideTrain ? 0.56 : 0.5, insideTrain ? 0.16 : 0.14)) contactCount++;
       }
       if (contactCount > 0) {
         player.userData.velocity.multiplyScalar(Math.max(0.48, 1 - contactCount * 0.07));
@@ -1072,9 +1295,10 @@
       resolvePassengerGroup(movingPassengers, 0.44, 0.55);
 
       const visiblePacked = packedPeople.filter((p) => p.visible);
+      resolvePassengerGroup(visiblePacked, 0.48, 0.38);
       for (const passenger of movingPassengers) {
         for (const packed of visiblePacked) {
-          resolvePassengerPair(passenger, packed, 0.36, 0.18, 0.04);
+          resolvePassengerPair(passenger, packed, 0.48, 0.22, 0.12);
         }
       }
 
@@ -1082,7 +1306,13 @@
         applyPassengerContact(passenger, 0.5, 0.2, 0.2);
       }
       for (const passenger of visiblePacked) {
-        applyPassengerContact(passenger, insideTrain ? 0.38 : 0.42, 0.08, insideTrain ? 0.1 : 0.08);
+        applyPassengerContact(passenger, insideTrain ? 0.52 : 0.46, 0.14, insideTrain ? 0.24 : 0.12);
+      }
+      for (const passenger of movingPassengers) {
+        constrainPassengerToTrainInterior(passenger);
+      }
+      for (const passenger of visiblePacked) {
+        constrainPassengerToTrainInterior(passenger);
       }
       constrainPlayer();
     }
@@ -1116,12 +1346,21 @@
       const previousZ = passenger.userData.prevZ ?? passenger.position.z;
       const wasInSameLane = Math.abs(previousZ - player.position.z) < laneWidth;
       const isInSameLane = Math.abs(passenger.position.z - player.position.z) < laneWidth;
+      const segmentX = passenger.position.x - previousX;
+      const segmentZ = passenger.position.z - previousZ;
+      const segmentLenSq = segmentX * segmentX + segmentZ * segmentZ;
+      const closestT = segmentLenSq > 0.0001
+        ? THREE.MathUtils.clamp(((player.position.x - previousX) * segmentX + (player.position.z - previousZ) * segmentZ) / segmentLenSq, 0, 1)
+        : 1;
+      const closestX = previousX + segmentX * closestT;
+      const closestZ = previousZ + segmentZ * closestT;
+      const sweptThroughPlayer = Math.hypot(closestX - player.position.x, closestZ - player.position.z) < gap;
       const passengerWasBehind = previousX >= player.position.x + gap * 0.35;
       const passengerIsBehind = passenger.position.x >= player.position.x;
       const crossedThroughPlayer = passengerWasBehind && passenger.position.x < player.position.x + gap;
       const crowdingFromBehind = passengerIsBehind && passenger.position.x < player.position.x + gap;
 
-      if ((wasInSameLane || isInSameLane) && (crossedThroughPlayer || crowdingFromBehind)) {
+      if ((wasInSameLane || isInSameLane || sweptThroughPlayer) && (crossedThroughPlayer || crowdingFromBehind || sweptThroughPlayer)) {
         passenger.position.x = Math.min(platformWallX - 0.45, player.position.x + gap);
         passenger.position.z = THREE.MathUtils.lerp(passenger.position.z, player.position.z, 0.35);
         passenger.userData.blockedByPlayer = true;
@@ -1177,7 +1416,7 @@
       if (boarded) {
         lookTarget.set(player.position.x, 0, player.position.z + 8);
       } else if (insideTrain || player.position.x < -5.05) {
-        lookTarget.set(-6.65, 0, player.position.z + 4);
+        lookTarget.set(trainInteriorWallX + 0.75, 0, player.position.z + 4);
       } else if (failed) {
         lookTarget.set(platformEdgeX + 0.9, 0, currentTrainDoorZ());
       }
@@ -1254,11 +1493,11 @@
 
     if (window.nipplejs) {
       const joystickSize = Math.max(86, Math.min(118, window.innerWidth * 0.28));
-      const joystickOffset = `${Math.round(joystickSize * 0.74)}px`;
+      const joystickBottomOffset = `${Math.round(joystickSize / 2)}px`;
       const joystick = nipplejs.create({
         zone: document.getElementById('joystick-zone'),
         mode: 'static',
-        position: { left: joystickOffset, bottom: joystickOffset },
+        position: { left: '50%', bottom: joystickBottomOffset },
         color: '#facc15',
         size: joystickSize
       });
