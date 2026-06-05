@@ -497,6 +497,9 @@
     const trainDoorPassageHalfWidth = 0.95;
     const trainDoorwayCrowdHalfWidth = 1.18;
     const trainDoorZ = -4.7;
+    const onboardContactPriority = 0.04;
+    const platformCrowdPushDamping = 0.9;
+    const trainWallContactPriority = 0.008;
 
     const player = createPerson({
       jacket: 0x2563eb,
@@ -1314,17 +1317,21 @@
       const xBeforeCrowdContact = player.position.x;
       let contactCount = 0;
       for (const p of queuePeople) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.58 : 0.54, enteringThroughDoor ? 0.27 : 0.24)) contactCount++;
+        const platformStrength = enteringThroughDoor ? 0.27 * platformCrowdPushDamping : 0.24;
+        if (pushApart(player, p, enteringThroughDoor ? 0.58 : 0.54, platformStrength)) contactCount++;
       }
       for (const p of latePassengers) {
-        if (pushApart(player, p, enteringThroughDoor ? 0.56 : 0.5, enteringThroughDoor ? 0.25 : 0.2)) contactCount++;
+        const platformStrength = enteringThroughDoor ? 0.25 * platformCrowdPushDamping : 0.2;
+        if (pushApart(player, p, enteringThroughDoor ? 0.56 : 0.5, platformStrength)) contactCount++;
       }
       for (const p of packedPeople) {
         if (!p.visible) continue;
-        const packedRadius = insideTrain || inDoorwayCrowd ? 0.6 : 0.5;
-        const packedStrength = insideTrain || inDoorwayCrowd ? 0.2 : 0.14;
+        const onboardPriority = (insideTrain || inDoorwayCrowd) ? onboardContactPriority : 0;
+        const packedRadius = insideTrain || inDoorwayCrowd ? 0.6 + onboardPriority : 0.5;
+        const packedStrength = insideTrain || inDoorwayCrowd ? 0.2 + onboardPriority : 0.14;
         if (pushApart(player, p, packedRadius, packedStrength)) contactCount++;
       }
+      contactCount += applyTrainWallContactPriority(inDoorwayCrowd) ? 1 : 0;
       if (contactCount > 0) {
         if (inDoorwayCrowd && !isPlayerFullyInsideTrain() && player.position.x < xBeforeCrowdContact) {
           // 後ろから来た乗客との接触だけで車内へ押し込まれすぎないよう、
@@ -1335,6 +1342,23 @@
         const jamSlowdown = inDoorwayCrowd ? 0.1 : 0;
         player.userData.velocity.multiplyScalar(Math.max(0.34, 1 - contactCount * (0.08 + jamSlowdown)));
       }
+    }
+
+    function applyTrainWallContactPriority(inDoorwayCrowd) {
+      if (!inDoorwayCrowd || isPlayerFullyInsideTrain()) return false;
+      const doorZ = currentTrainDoorZ();
+      const doorwayDepth = THREE.MathUtils.clamp((platformEdgeX - player.position.x) / (platformEdgeX - trainInteriorDoorX), 0, 1);
+      if (doorwayDepth <= 0) return false;
+
+      // 車内側（既に乗っている乗客と車両の壁）をほんの少し優位にして、
+      // ホーム側の密集だけで一気に車内へ押し込まれる挙動を抑える。
+      const centeredInDoor = 1 - THREE.MathUtils.clamp(Math.abs(player.position.z - doorZ) / trainDoorwayCrowdHalfWidth, 0, 1);
+      const wallPressure = trainWallContactPriority * doorwayDepth * centeredInDoor;
+      if (wallPressure <= 0.0001) return false;
+
+      player.position.x += wallPressure;
+      player.userData.velocity.x = Math.max(player.userData.velocity.x, -0.12);
+      return true;
     }
 
     function resolveCrowdContacts() {
@@ -1350,11 +1374,17 @@
         }
       }
 
+      const doorDistanceZ = Math.abs(player.position.z - currentTrainDoorZ());
+      const playerInDoorwayCrowd = doorDistanceZ < trainDoorwayCrowdHalfWidth && player.position.x < platformEdgeX + 0.65;
       for (const passenger of movingPassengers) {
-        applyPassengerContact(passenger, 0.54, 0.22, 0.24);
+        const platformPlayerShare = playerInDoorwayCrowd ? 0.24 * platformCrowdPushDamping : 0.24;
+        const platformPassengerShare = playerInDoorwayCrowd ? 0.22 + onboardContactPriority * 0.5 : 0.22;
+        applyPassengerContact(passenger, 0.54, platformPassengerShare, platformPlayerShare);
       }
       for (const passenger of visiblePacked) {
-        applyPassengerContact(passenger, insideTrain ? 0.56 : 0.5, 0.16, insideTrain ? 0.28 : 0.16);
+        const packedRadius = (insideTrain || playerInDoorwayCrowd) ? 0.56 + onboardContactPriority : 0.5;
+        const packedPlayerShare = insideTrain ? 0.28 + onboardContactPriority : (playerInDoorwayCrowd ? 0.16 + onboardContactPriority : 0.16);
+        applyPassengerContact(passenger, packedRadius, 0.16, packedPlayerShare);
       }
       for (const passenger of movingPassengers) {
         constrainPassengerToTrainInterior(passenger);
