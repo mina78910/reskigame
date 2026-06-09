@@ -532,6 +532,14 @@
         const ceilingLowerAmount = 0.5;
         const roomHeight = 5 - ceilingLowerAmount;
         const wallFixtureHeightBoost = 0.6;
+        // ユーザー指定の2点（X:15.58/Z:14.16 と X:-16.50/Z:5.91）で囲まれる前方エリア。
+        // 大理石カウンターと高台以外の玄関・廊下・中間壁などは後段で撤去し、外周壁だけを残す。
+        const FRONT_CLEAR_AREA = Object.freeze({
+            minX: -16.50,
+            maxX: 15.58,
+            minZ: 5.91,
+            maxZ: 14.16
+        });
 
         function createCoordinateLabelSprite(text, color = '#0f172a') {
             const canvas = document.createElement('canvas');
@@ -1585,6 +1593,42 @@
 
         scene.add(doorGroup);
 
+        function clearFrontInteriorAndAddOuterShell() {
+            const removable = [];
+            const worldPosition = new THREE.Vector3();
+
+            scene.traverse((object) => {
+                if (!object.parent || object === floor) return;
+                if (!(object.isMesh || object.isLight)) return;
+                object.getWorldPosition(worldPosition);
+                const insideClearArea = worldPosition.x >= FRONT_CLEAR_AREA.minX
+                    && worldPosition.x <= FRONT_CLEAR_AREA.maxX
+                    && worldPosition.z >= FRONT_CLEAR_AREA.minZ
+                    && worldPosition.z <= FRONT_CLEAR_AREA.maxZ;
+                if (insideClearArea) removable.push(object);
+            });
+
+            removable.forEach((object) => {
+                if (object.parent) object.parent.remove(object);
+            });
+
+            const clearAreaWidth = FRONT_CLEAR_AREA.maxX - FRONT_CLEAR_AREA.minX;
+            const clearAreaDepth = FRONT_CLEAR_AREA.maxZ - FRONT_CLEAR_AREA.minZ;
+            const clearAreaCenterX = (FRONT_CLEAR_AREA.minX + FRONT_CLEAR_AREA.maxX) / 2;
+            const clearAreaCenterZ = (FRONT_CLEAR_AREA.minZ + FRONT_CLEAR_AREA.maxZ) / 2;
+
+            // メイン床を指定範囲の奥まで延長し、撤去後も一続きの木目床にする。
+            createSharedWoodPatch(clearAreaWidth, clearAreaDepth, clearAreaCenterX, clearAreaCenterZ, 0.012);
+
+            // 玄関・廊下・途中壁を取り払った後、指定範囲の一番外側だけ壁として残す。
+            const shellWallColor = 0xd8d5ca;
+            createWall(0.2, roomHeight, clearAreaDepth, FRONT_CLEAR_AREA.minX - 0.1, roomHeight / 2, clearAreaCenterZ, shellWallColor);
+            createWall(0.2, roomHeight, clearAreaDepth, FRONT_CLEAR_AREA.maxX + 0.1, roomHeight / 2, clearAreaCenterZ, shellWallColor);
+            createWall(clearAreaWidth + 0.4, roomHeight, 0.2, clearAreaCenterX, roomHeight / 2, FRONT_CLEAR_AREA.maxZ + 0.1, shellWallColor);
+        }
+
+        clearFrontInteriorAndAddOuterShell();
+
         // ==========================================
         // メイン天井 
         // ==========================================
@@ -2103,120 +2147,13 @@
                 if(camera.position.x > boundXMax) camera.position.x = boundXMax; 
                 if(camera.position.z < boundZMin) camera.position.z = boundZMin; 
                 
-                const zFrontRoomBound = roomDepth / 2 - 0.35;
-                const zAlcoveBound = roomDepth / 2 + alcoveDepth - 1.0; 
-                const zLeftNicheBound = roomDepth / 2 + leftNicheDepth - 0.4;
-                const zNewHallBound = entranceEndZ - ENTRANCE_LAYOUT.walkBackInset;
-                const alcoveAllowedLeft = alcoveStart + 0.6; 
-                const alcoveAllowedRight = alcoveEnd - 0.6;  
-                const leftNicheAllowedLeft = leftNicheStart + 0.4;
-                const leftNicheAllowedRight = leftNicheEnd - 0.4;
-                const newHallAllowedLeft = newDoorStart + 0.25;
-                const newHallAllowedRight = newDoorEnd - 0.25;
-                const entranceWalkLeft = entranceLeftX + ENTRANCE_LAYOUT.walkLeftInset;
-                const entranceWalkRight = entranceRightX - ENTRANCE_LAYOUT.walkRightInset;
-                const corridorWalkLeft = corridorLeftX + 0.35;
-                const corridorWalkRight = corridorRightX - 0.35;
-                const corridorWalkStartZ = roomDepth / 2 + 0.45;
-                const corridorWalkEndZ = corridorEndZ - 0.45;
-                const crossWalkLeft = entranceWalkRight;
-                const crossWalkRight = crossCorridorMaxX - 0.45;
-                const crossWalkStartZ = corridorTurnStartZ + 0.25;
-                const crossWalkEndZ = corridorEndZ - 0.45;
-                // エレベーターホール左壁付近は見た目より早く X=-7.65 で止まっていたため、
-                // 他の狭い廊下より少しだけ壁際まで寄れる余白にする。
-                const elevatorWallPadding = 0.18;
-                const elevatorWalkLeft = elevatorHallLeftX + elevatorWallPadding;
-                const elevatorWalkRight = elevatorHallRightX - elevatorWallPadding;
-                const elevatorWalkBackZ = elevatorHallBackZ + 0.45;
-                // エレベーターホール正面の横廊下は Z=14.25 付近まで歩ける見た目なので、
-                // ホール判定に入ったままでも Z=13.25 で押し返さず、横廊下側へ少し進める余白を残す。
-                const elevatorDoorwayFrontZ = crossWalkEndZ - 0.3;
-                const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-                // 判定境界に少し余裕を持たせる。X=-7.91 / Z=14.55 付近は横廊下の突き当たりと
-                // エレベーターホール入口の角が重なるため、厳密な不等号だと数cmの差でどの通路にも属さず、
-                // 直前座標へ戻され続けてフリーズしたように見えることがあった。
-                const routeEpsilon = 0.12;
-                const doorwayOverlap = 0.55;
-                // アルコーブ判定は X 範囲だけだと奥の廊下（同じ X=約4.8）でも成立し、
-                // Z=15 付近からアルコーブ上限まで押し戻されてワープに見えるため、手前側だけに限定する。
-                const inAlcoveMouth = camera.position.x >= alcoveAllowedLeft - routeEpsilon
-                    && camera.position.x <= alcoveAllowedRight + routeEpsilon
-                    && camera.position.z <= zAlcoveBound + 0.25;
-                const inLeftNicheMouth = camera.position.x >= leftNicheAllowedLeft - routeEpsilon
-                    && camera.position.x <= leftNicheAllowedRight + routeEpsilon
-                    && camera.position.z <= zLeftNicheBound + 0.25;
-                const inNewHallMouth = camera.position.x >= newHallAllowedLeft - routeEpsilon
-                    && camera.position.x <= newHallAllowedRight + routeEpsilon
-                    && camera.position.z <= zNewHallBound + 0.25;
-                const inCrossCorridor = camera.position.z >= crossWalkStartZ - 0.15 - routeEpsilon
-                    && camera.position.z <= crossWalkEndZ + 0.15 + routeEpsilon
-                    && camera.position.x >= crossWalkLeft - 0.35 - routeEpsilon
-                    && camera.position.x <= crossWalkRight + 0.35 + routeEpsilon;
-                const inCorridor1 = camera.position.x >= corridorWalkLeft - 0.2 - routeEpsilon
-                    && camera.position.x <= corridorWalkRight + 0.2 + routeEpsilon
-                    && camera.position.z >= corridorWalkStartZ - routeEpsilon;
-                const inEntranceArea = camera.position.z >= entranceStartZ + 0.35 - routeEpsilon
-                    && camera.position.z <= crossWalkEndZ + 0.1 + routeEpsilon
-                    && camera.position.x >= entranceWalkLeft - 0.4 - routeEpsilon
-                    && camera.position.x <= entranceWalkRight + 0.55 + routeEpsilon;
-                const inElevatorHall = camera.position.z >= elevatorWalkBackZ - 0.2 - routeEpsilon
-                    && camera.position.z <= elevatorDoorwayFrontZ + routeEpsilon
-                    && camera.position.x >= elevatorWalkLeft - doorwayOverlap
-                    && camera.position.x <= elevatorWalkRight + 0.25 + routeEpsilon;
-                const inEntranceCrossTransition = inEntranceArea && camera.position.x < crossWalkLeft;
-                // エレベーターホール入口は横廊下と判定が重なる。X=-7.82 / Z=13.50 付近で
-                // 左へ抜けたいときはホール左端へ戻すのではなく、横廊下として扱って -X 方向へ進めるようにする。
-                const leavingElevatorHallToCrossCorridor = inCrossCorridor
-                    && camera.position.z >= crossWalkStartZ
-                    && camera.position.x < elevatorWalkLeft;
+                const zFrontRoomBound = FRONT_CLEAR_AREA.maxZ - 0.45;
+                const walkableFrontMinX = FRONT_CLEAR_AREA.minX + 0.45;
+                const walkableFrontMaxX = FRONT_CLEAR_AREA.maxX - 0.45;
 
-                if (leavingElevatorHallToCrossCorridor) {
-                    camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
-                    camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
-                } else if (inElevatorHall) {
-                    camera.position.x = clamp(camera.position.x, elevatorWalkLeft, elevatorWalkRight);
-                    camera.position.z = clamp(camera.position.z, elevatorWalkBackZ, elevatorDoorwayFrontZ);
-                } else if (inEntranceCrossTransition) {
-                    camera.position.x = clamp(camera.position.x, entranceWalkLeft, entranceWalkRight);
-                    if (camera.position.z > crossWalkEndZ) camera.position.z = crossWalkEndZ;
-                } else if (inCrossCorridor) {
-                    camera.position.x = clamp(camera.position.x, crossWalkLeft, crossWalkRight);
-                    camera.position.z = clamp(camera.position.z, crossWalkStartZ, crossWalkEndZ);
-                } else if (inCorridor1) {
-                    camera.position.x = clamp(camera.position.x, corridorWalkLeft, corridorWalkRight);
-                    if (camera.position.z > corridorWalkEndZ) camera.position.z = corridorWalkEndZ;
-                } else if (inEntranceArea) {
-                    camera.position.x = clamp(camera.position.x, entranceWalkLeft, entranceWalkRight);
-                    if (camera.position.z > crossWalkEndZ) camera.position.z = crossWalkEndZ;
-                } else if (inAlcoveMouth) {
-                    if (camera.position.z > zAlcoveBound) camera.position.z = zAlcoveBound;
-                } else if (inLeftNicheMouth) {
-                    if (camera.position.z > zLeftNicheBound) camera.position.z = zLeftNicheBound;
-                } else if (inNewHallMouth) {
-                    if (camera.position.z > zNewHallBound) camera.position.z = zNewHallBound;
-                } else if (camera.position.z > zFrontRoomBound) {
-                    // 廊下・玄関などメインルーム外で壁の外側へ押し出されると、
-                    // 前面境界へ直接戻すと、メインルームへ瞬間移動したように見えることがある。
-                    // すでにメインルーム外にいる場合は直前の有効位置へ戻し、壁に押し当て続けても場所が飛ばないようにする。
-                    if (previousPosition.z > zFrontRoomBound) {
-                        // ドア枠の角を斜めに抜けるとき、X が先に通路判定から外れても
-                        // Z が室内側へ戻る動きなら残す。両軸を直前位置へ戻すと、
-                        // X=-12.36 / Z=5.60 付近で -X + -Z 入力時に壁へ吸い付いたように止まる。
-                        const returningToMainRoom = camera.position.z < previousPosition.z;
-                        camera.position.x = previousPosition.x;
-                        if (returningToMainRoom) {
-                            camera.position.z = Math.max(camera.position.z, zFrontRoomBound);
-                            velocity.x = 0;
-                        } else {
-                            camera.position.z = previousPosition.z;
-                            velocity.x = 0;
-                            velocity.z = 0;
-                        }
-                    } else {
-                        camera.position.z = zFrontRoomBound;
-                    }
-                }
+                if (camera.position.x < walkableFrontMinX) camera.position.x = walkableFrontMinX;
+                if (camera.position.x > walkableFrontMaxX) camera.position.x = walkableFrontMaxX;
+                if (camera.position.z > zFrontRoomBound) camera.position.z = zFrontRoomBound;
             }
 
             if (SHOW_COORDINATES && hudElement) {
