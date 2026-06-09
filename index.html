@@ -532,14 +532,6 @@
         const ceilingLowerAmount = 0.5;
         const roomHeight = 5 - ceilingLowerAmount;
         const wallFixtureHeightBoost = 0.6;
-        // ユーザー指定の2点（X:15.58/Z:14.16 と X:-16.50/Z:5.91）で囲まれる前方エリア。
-        // 大理石カウンターと高台以外の玄関・廊下・中間壁などは後段で撤去し、外周壁だけを残す。
-        const FRONT_CLEAR_AREA = Object.freeze({
-            minX: -16.50,
-            maxX: 15.58,
-            minZ: 5.91,
-            maxZ: 14.16
-        });
 
         function createCoordinateLabelSprite(text, color = '#0f172a') {
             const canvas = document.createElement('canvas');
@@ -1593,7 +1585,7 @@
 
         scene.add(doorGroup);
 
-        function clearFrontInteriorAndAddOuterShell() {
+        function removeFrontInteriorWalls(minX, maxX, minZ, maxZ) {
             const removable = [];
             const worldPosition = new THREE.Vector3();
 
@@ -1601,33 +1593,33 @@
                 if (!object.parent || object === floor) return;
                 if (!(object.isMesh || object.isLight)) return;
                 object.getWorldPosition(worldPosition);
-                const insideClearArea = worldPosition.x >= FRONT_CLEAR_AREA.minX
-                    && worldPosition.x <= FRONT_CLEAR_AREA.maxX
-                    && worldPosition.z >= FRONT_CLEAR_AREA.minZ
-                    && worldPosition.z <= FRONT_CLEAR_AREA.maxZ;
-                if (insideClearArea) removable.push(object);
+                const insideTargetRange = worldPosition.x >= minX
+                    && worldPosition.x <= maxX
+                    && worldPosition.z >= minZ
+                    && worldPosition.z <= maxZ;
+                if (insideTargetRange) removable.push(object);
             });
 
             removable.forEach((object) => {
                 if (object.parent) object.parent.remove(object);
             });
 
-            const clearAreaWidth = FRONT_CLEAR_AREA.maxX - FRONT_CLEAR_AREA.minX;
-            const clearAreaDepth = FRONT_CLEAR_AREA.maxZ - FRONT_CLEAR_AREA.minZ;
-            const clearAreaCenterX = (FRONT_CLEAR_AREA.minX + FRONT_CLEAR_AREA.maxX) / 2;
-            const clearAreaCenterZ = (FRONT_CLEAR_AREA.minZ + FRONT_CLEAR_AREA.maxZ) / 2;
+            const targetWidth = maxX - minX;
+            const targetDepth = maxZ - minZ;
+            const targetCenterX = (minX + maxX) / 2;
+            const targetCenterZ = (minZ + maxZ) / 2;
 
             // メイン床を指定範囲の奥まで延長し、撤去後も一続きの木目床にする。
-            createSharedWoodPatch(clearAreaWidth, clearAreaDepth, clearAreaCenterX, clearAreaCenterZ, 0.012);
+            createSharedWoodPatch(targetWidth, targetDepth, targetCenterX, targetCenterZ, 0.012);
 
             // 玄関・廊下・途中壁を取り払った後、指定範囲の一番外側だけ壁として残す。
             const shellWallColor = 0xd8d5ca;
-            createWall(0.2, roomHeight, clearAreaDepth, FRONT_CLEAR_AREA.minX - 0.1, roomHeight / 2, clearAreaCenterZ, shellWallColor);
-            createWall(0.2, roomHeight, clearAreaDepth, FRONT_CLEAR_AREA.maxX + 0.1, roomHeight / 2, clearAreaCenterZ, shellWallColor);
-            createWall(clearAreaWidth + 0.4, roomHeight, 0.2, clearAreaCenterX, roomHeight / 2, FRONT_CLEAR_AREA.maxZ + 0.1, shellWallColor);
+            createWall(0.2, roomHeight, targetDepth, minX - 0.1, roomHeight / 2, targetCenterZ, shellWallColor);
+            createWall(0.2, roomHeight, targetDepth, maxX + 0.1, roomHeight / 2, targetCenterZ, shellWallColor);
+            createWall(targetWidth + 0.4, roomHeight, 0.2, targetCenterX, roomHeight / 2, maxZ + 0.1, shellWallColor);
         }
 
-        clearFrontInteriorAndAddOuterShell();
+        removeFrontInteriorWalls(-16.50, 15.58, 5.91, 14.16);
 
         // ==========================================
         // メイン天井 
@@ -2147,13 +2139,13 @@
                 if(camera.position.x > boundXMax) camera.position.x = boundXMax; 
                 if(camera.position.z < boundZMin) camera.position.z = boundZMin; 
                 
-                const zFrontRoomBound = FRONT_CLEAR_AREA.maxZ - 0.45;
-                const walkableFrontMinX = FRONT_CLEAR_AREA.minX + 0.45;
-                const walkableFrontMaxX = FRONT_CLEAR_AREA.maxX - 0.45;
+                const walkableFrontMinX = -16.50 + 0.45;
+                const walkableFrontMaxX = 15.58 - 0.45;
+                const walkableFrontMaxZ = 14.16 - 0.45;
 
                 if (camera.position.x < walkableFrontMinX) camera.position.x = walkableFrontMinX;
                 if (camera.position.x > walkableFrontMaxX) camera.position.x = walkableFrontMaxX;
-                if (camera.position.z > zFrontRoomBound) camera.position.z = zFrontRoomBound;
+                if (camera.position.z > walkableFrontMaxZ) camera.position.z = walkableFrontMaxZ;
             }
 
             if (SHOW_COORDINATES && hudElement) {
