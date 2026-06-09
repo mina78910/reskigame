@@ -268,19 +268,43 @@
       position: absolute;
       top: 10px;
       left: 10px;
-      background-color: rgba(255, 255, 255, 0.38);
-      color: rgba(0, 0, 0, 0.58);
-      padding: 4px 6px;
-      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.72);
+      color: rgba(0, 0, 0, 0.72);
+      padding: 6px 8px;
+      border-radius: 6px;
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10px;
-      font-weight: 600;
-      line-height: 1.25;
-      pointer-events: none;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.35;
+      pointer-events: auto;
       z-index: 20;
       display: none;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
-      border: 1px solid rgba(0, 0, 0, 0.16);
+      cursor: copy;
+      user-select: none;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(0, 0, 0, 0.18);
+    }
+
+    #coordinate-copy-toast {
+      position: absolute;
+      top: 10px;
+      left: 185px;
+      background: rgba(15, 23, 42, 0.82);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 21;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+
+    #coordinate-copy-toast.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     #joystick-zone {
@@ -388,7 +412,8 @@
 
 <body>
   <div id="crosshair"></div>
-  <div id="coordinate-hud"></div>
+  <div id="coordinate-hud" title="クリックまたはCキーで現在地の座標をコピー"></div>
+  <div id="coordinate-copy-toast" role="status" aria-live="polite"></div>
 
   <div id="joystick-zone"></div>
   <div id="mobile-exit">?</div>
@@ -431,11 +456,19 @@
         // デバイス判定 & 開発・デバッグ用設定
         // ==========================================
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        const SHOW_COORDINATES = true; 
+        const SHOW_COORDINATES = true;
+        const SHOW_COORDINATE_GUIDES = true;
+        const COORDINATE_GUIDE_STEP = 5;
+        const COORDINATE_GUIDE_MIN_X = -40;
+        const COORDINATE_GUIDE_MAX_X = 25;
+        const COORDINATE_GUIDE_MIN_Z = -20;
+        const COORDINATE_GUIDE_MAX_Z = 30;
         
-        let isPlaying = false; 
+        let isPlaying = false;
+        let copyToastTimer = null;
 
         const hudElement = document.getElementById('coordinate-hud');
+        const copyToastElement = document.getElementById('coordinate-copy-toast');
         if (SHOW_COORDINATES) {
             hudElement.style.display = 'block';
         }
@@ -500,6 +533,109 @@
         const ceilingLowerAmount = 0.5;
         const roomHeight = 5 - ceilingLowerAmount;
         const wallFixtureHeightBoost = 0.6;
+
+        function createCoordinateLabelSprite(text, color = '#0f172a') {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 96;
+            const ctx = canvas.getContext('2d');
+            ctx.font = '700 28px Courier New, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.76)';
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.18)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+                ctx.roundRect(20, 22, 216, 52, 12);
+            } else {
+                ctx.rect(20, 22, 216, 52);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 1);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(3.2, 1.2, 1);
+            sprite.renderOrder = 999;
+            return sprite;
+        }
+
+        function createCoordinateGuideLine(points, color, opacity, lineWidth = 1) {
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color,
+                transparent: true,
+                opacity,
+                depthTest: false,
+                depthWrite: false,
+                linewidth: lineWidth
+            });
+            const line = new THREE.Line(geometry, material);
+            line.renderOrder = 998;
+            return line;
+        }
+
+        function createCoordinateGuides() {
+            const group = new THREE.Group();
+            group.name = 'debug-coordinate-guides';
+            const y = 0.035;
+            const minX = COORDINATE_GUIDE_MIN_X;
+            const maxX = COORDINATE_GUIDE_MAX_X;
+            const minZ = COORDINATE_GUIDE_MIN_Z;
+            const maxZ = COORDINATE_GUIDE_MAX_Z;
+            const step = COORDINATE_GUIDE_STEP;
+
+            for (let x = minX; x <= maxX; x += step) {
+                const isAxis = x === 0;
+                const line = createCoordinateGuideLine(
+                    [new THREE.Vector3(x, y, minZ), new THREE.Vector3(x, y, maxZ)],
+                    isAxis ? 0xef4444 : 0x64748b,
+                    isAxis ? 0.78 : 0.32,
+                    isAxis ? 2 : 1
+                );
+                group.add(line);
+
+                const label = createCoordinateLabelSprite(`X ${x}`, isAxis ? '#dc2626' : '#334155');
+                label.position.set(x, y + 0.58, minZ + 1.2);
+                group.add(label);
+            }
+
+            for (let z = minZ; z <= maxZ; z += step) {
+                const isAxis = z === 0;
+                const line = createCoordinateGuideLine(
+                    [new THREE.Vector3(minX, y, z), new THREE.Vector3(maxX, y, z)],
+                    isAxis ? 0x2563eb : 0x64748b,
+                    isAxis ? 0.78 : 0.32,
+                    isAxis ? 2 : 1
+                );
+                group.add(line);
+
+                const label = createCoordinateLabelSprite(`Z ${z}`, isAxis ? '#1d4ed8' : '#334155');
+                label.position.set(minX + 1.6, y + 0.58, z);
+                group.add(label);
+            }
+
+            const originLabel = createCoordinateLabelSprite('X0 / Z0', '#111827');
+            originLabel.position.set(0, y + 0.82, 0);
+            originLabel.scale.set(3.9, 1.45, 1);
+            group.add(originLabel);
+            return group;
+        }
+
+        if (SHOW_COORDINATE_GUIDES) {
+            scene.add(createCoordinateGuides());
+        }
 
         function createCarpetTexture() {
             const size = 512;
@@ -3388,6 +3524,56 @@
             exitMobileGame();
         }, { passive: false });
 
+        function formatCurrentCoordinates() {
+            return `X: ${camera.position.x.toFixed(2)}, Y: ${camera.position.y.toFixed(2)}, Z: ${camera.position.z.toFixed(2)}`;
+        }
+
+        function showCopyToast(message) {
+            if (!copyToastElement) return;
+            copyToastElement.textContent = message;
+            copyToastElement.classList.add('visible');
+            if (copyToastTimer) clearTimeout(copyToastTimer);
+            copyToastTimer = setTimeout(() => {
+                copyToastElement.classList.remove('visible');
+            }, 1400);
+        }
+
+        function copyCurrentCoordinates() {
+            const text = formatCurrentCoordinates();
+            const fallbackCopy = () => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.setAttribute('readonly', '');
+                textarea.style.position = 'fixed';
+                textarea.style.left = '-9999px';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
+                const copied = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                return copied;
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text)
+                    .then(() => showCopyToast(`座標をコピー: ${text}`))
+                    .catch(() => {
+                        showCopyToast(fallbackCopy() ? `座標をコピー: ${text}` : '座標コピーに失敗しました');
+                    });
+                return;
+            }
+
+            showCopyToast(fallbackCopy() ? `座標をコピー: ${text}` : '座標コピーに失敗しました');
+        }
+
+        if (hudElement) {
+            hudElement.addEventListener('click', copyCurrentCoordinates);
+            hudElement.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                copyCurrentCoordinates();
+            }, { passive: false });
+        }
+
         document.addEventListener('pointerdown', (event) => {
             if (!isPlaying || event.pointerType !== 'mouse' || document.pointerLockElement === document.body) return;
             if (event.clientX > window.innerWidth / 2) {
@@ -3483,6 +3669,7 @@
             if(e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
             if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
             if(e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+            if(e.code === 'KeyC' && !e.repeat) copyCurrentCoordinates();
         });
         document.addEventListener('keyup', (e) => {
             if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
@@ -3670,7 +3857,7 @@
             }
 
             if (SHOW_COORDINATES && hudElement) {
-                hudElement.innerHTML = `X: ${camera.position.x.toFixed(2)}<br>Y: ${camera.position.y.toFixed(2)}<br>Z: ${camera.position.z.toFixed(2)}`;
+                hudElement.innerHTML = `POS&nbsp; X:${camera.position.x.toFixed(2)} &nbsp; Z:${camera.position.z.toFixed(2)}<br>Y:${camera.position.y.toFixed(2)} / 5ptメモリ表示中<br><span>クリック or Cキーで座標コピー</span>`;
             }
 
             prevTime = time;
