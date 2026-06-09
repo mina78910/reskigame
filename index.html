@@ -458,7 +458,7 @@
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         const SHOW_COORDINATES = true;
         const SHOW_COORDINATE_GUIDES = true;
-        const COORDINATE_GUIDE_STEP = 5;
+        const SHOW_INTERIOR_OBJECTS = false;
         const COORDINATE_GUIDE_MIN_X = -40;
         const COORDINATE_GUIDE_MAX_X = 25;
         const COORDINATE_GUIDE_MIN_Z = -20;
@@ -566,69 +566,38 @@
                 depthWrite: false
             });
             const sprite = new THREE.Sprite(material);
-            sprite.scale.set(3.2, 1.2, 1);
+            sprite.scale.set(5.4, 2.0, 1);
             sprite.renderOrder = 999;
             return sprite;
         }
 
-        function createCoordinateGuideLine(points, color, opacity, lineWidth = 1) {
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({
-                color,
-                transparent: true,
-                opacity,
-                depthTest: false,
-                depthWrite: false,
-                linewidth: lineWidth
-            });
-            const line = new THREE.Line(geometry, material);
-            line.renderOrder = 998;
-            return line;
-        }
-
         function createCoordinateGuides() {
             const group = new THREE.Group();
-            group.name = 'debug-coordinate-guides';
-            const y = 0.035;
+            group.name = 'debug-coordinate-direction-markers';
+            const y = 1.95;
             const minX = COORDINATE_GUIDE_MIN_X;
             const maxX = COORDINATE_GUIDE_MAX_X;
             const minZ = COORDINATE_GUIDE_MIN_Z;
             const maxZ = COORDINATE_GUIDE_MAX_Z;
-            const step = COORDINATE_GUIDE_STEP;
 
-            for (let x = minX; x <= maxX; x += step) {
-                const isAxis = x === 0;
-                const line = createCoordinateGuideLine(
-                    [new THREE.Vector3(x, y, minZ), new THREE.Vector3(x, y, maxZ)],
-                    isAxis ? 0xef4444 : 0x64748b,
-                    isAxis ? 0.78 : 0.32,
-                    isAxis ? 2 : 1
-                );
-                group.add(line);
+            const markers = [
+                { text: `X MIN ${minX}`, color: '#dc2626', position: [minX, y, 0] },
+                { text: 'X 0', color: '#dc2626', position: [0, y, 0] },
+                { text: `X MAX ${maxX}`, color: '#dc2626', position: [maxX, y, 0] },
+                { text: `Z MIN ${minZ}`, color: '#1d4ed8', position: [0, y + 0.95, minZ] },
+                { text: 'Z 0', color: '#1d4ed8', position: [0, y + 0.95, 0] },
+                { text: `Z MAX ${maxZ}`, color: '#1d4ed8', position: [0, y + 0.95, maxZ] }
+            ];
 
-                const label = createCoordinateLabelSprite(`X ${x}`, isAxis ? '#dc2626' : '#334155');
-                label.position.set(x, y + 0.58, minZ + 1.2);
+            markers.forEach(({ text, color, position }) => {
+                const label = createCoordinateLabelSprite(text, color);
+                label.position.set(...position);
                 group.add(label);
-            }
+            });
 
-            for (let z = minZ; z <= maxZ; z += step) {
-                const isAxis = z === 0;
-                const line = createCoordinateGuideLine(
-                    [new THREE.Vector3(minX, y, z), new THREE.Vector3(maxX, y, z)],
-                    isAxis ? 0x2563eb : 0x64748b,
-                    isAxis ? 0.78 : 0.32,
-                    isAxis ? 2 : 1
-                );
-                group.add(line);
-
-                const label = createCoordinateLabelSprite(`Z ${z}`, isAxis ? '#1d4ed8' : '#334155');
-                label.position.set(minX + 1.6, y + 0.58, z);
-                group.add(label);
-            }
-
-            const originLabel = createCoordinateLabelSprite('X0 / Z0', '#111827');
-            originLabel.position.set(0, y + 0.82, 0);
-            originLabel.scale.set(3.9, 1.45, 1);
+            const originLabel = createCoordinateLabelSprite('ORIGIN X0 / Z0', '#111827');
+            originLabel.position.set(0, y + 1.9, 0);
+            originLabel.scale.set(6.6, 2.4, 1);
             group.add(originLabel);
             return group;
         }
@@ -1405,7 +1374,7 @@
         }
 
         // 会議室とテレカンボックスは配置しない。
-        createPetBottleTrashBin();
+        if (SHOW_INTERIOR_OBJECTS) createPetBottleTrashBin();
         
         const wall2Width = alcoveStart - newDoorEnd;
         createWall(wall2Width, roomHeight, 0.2, newDoorEnd + wall2Width / 2, roomHeight / 2, roomDepth / 2);
@@ -1631,7 +1600,7 @@
             cushion.receiveShadow = true;
             benchGroup.add(cushion);
         });
-        scene.add(benchGroup);
+        if (SHOW_INTERIOR_OBJECTS) scene.add(benchGroup);
 
         function createReceptionLogoTexture() {
             const canvas = document.createElement('canvas');
@@ -1671,14 +1640,14 @@
         );
         receptionSign.rotation.y = Math.PI / 2;
         receptionSign.position.set(wallOffsetX, 1.72, entranceStartZ + 5.6);
-        scene.add(receptionSign);
+        if (SHOW_INTERIOR_OBJECTS) scene.add(receptionSign);
 
         const shelfMat = new THREE.MeshStandardMaterial({ color: 0x6d4329, roughness: 0.48 });
         const receptionShelf = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 1.22), shelfMat);
         receptionShelf.position.set(entranceLeftX + 0.31, 1.08, entranceStartZ + 5.6);
         receptionShelf.castShadow = true;
         receptionShelf.receiveShadow = true;
-        scene.add(receptionShelf);
+        if (SHOW_INTERIOR_OBJECTS) scene.add(receptionShelf);
 
         const phoneGroup = new THREE.Group();
         phoneGroup.position.set(entranceLeftX + 0.58, 1.16, entranceStartZ + 5.48);
@@ -1696,7 +1665,7 @@
         receiver.position.set(0, 0.095, 0.055);
         receiver.castShadow = true;
         phoneGroup.add(receiver);
-        scene.add(phoneGroup);
+        if (SHOW_INTERIOR_OBJECTS) scene.add(phoneGroup);
 
         // --- ドアフレームとガラス ---
         const dFrameGroup = new THREE.Group();
@@ -1735,7 +1704,7 @@
         dCloser.position.set(newDoorEnd - 0.3, newDoorHeight - 0.15, roomDepth/2 + 0.03);
         dFrameGroup.add(dCloser);
         
-        scene.add(dFrameGroup);
+        if (SHOW_INTERIOR_OBJECTS) scene.add(dFrameGroup);
 
         // --- 中央のアルコーブ構築 ---
         const rightWallWidth = roomWidth / 2 - alcoveEnd; 
@@ -2006,21 +1975,21 @@
         }
 
         // ガラス張りの室内側に配置。玄関ホール側や壁に食い込まないよう、ガラス面から少し離す。
-        createGlassSidePottedPlant({
+        if (SHOW_INTERIOR_OBJECTS) createGlassSidePottedPlant({
             x: entranceInsetGlass.frontStartX + 0.36,
             z: entranceInsetGlass.frontZ - 0.58,
             height: entranceInsetGlass.centerY,
             style: 'fan',
             rotationY: Math.PI
         });
-        createGlassSidePottedPlant({
+        if (SHOW_INTERIOR_OBJECTS) createGlassSidePottedPlant({
             x: entranceInsetGlass.frontEndX - 0.34,
             z: entranceInsetGlass.frontZ - 0.62,
             height: entranceInsetGlass.centerY,
             style: 'broad',
             rotationY: Math.PI * 0.92
         });
-        createGlassSidePottedPlant({
+        if (SHOW_INTERIOR_OBJECTS) createGlassSidePottedPlant({
             x: entranceInsetGlass.verticalX - 0.62,
             z: entranceInsetGlass.verticalStartZ + 1.35,
             height: entranceInsetGlass.topY,
@@ -2283,10 +2252,10 @@
         }
 
         // オフィス自動販売機付近のフリー席: Z方向にそろえた2席×2列、列間は約2ポイント
-        createFreeSeatSet(-27.9, -3.2, 0);
-        createFreeSeatSet(-27.9, -5.8, 0);
-        createFreeSeatSet(-32.2, -3.2, 0);
-        createFreeSeatSet(-32.2, -5.8, 0);
+        if (SHOW_INTERIOR_OBJECTS) createFreeSeatSet(-27.9, -3.2, 0);
+        if (SHOW_INTERIOR_OBJECTS) createFreeSeatSet(-27.9, -5.8, 0);
+        if (SHOW_INTERIOR_OBJECTS) createFreeSeatSet(-32.2, -3.2, 0);
+        if (SHOW_INTERIOR_OBJECTS) createFreeSeatSet(-32.2, -5.8, 0);
 
 
         // ==========================================
@@ -2620,15 +2589,17 @@
             scene.add(group);
         }
 
-        // 部屋中央に移動したフリー席: 4セットから6セットに増やし、拡張後の部屋中心に寄せて配置
-        [
-            { x: -0.8, z: roomCenterZ - 2.7, rotation: Math.PI / 4 },
-            { x: 2.0, z: roomCenterZ - 2.7, rotation: -Math.PI / 4 },
-            { x: -0.8, z: roomCenterZ, rotation: -Math.PI / 4 },
-            { x: 2.0, z: roomCenterZ, rotation: Math.PI / 4 },
-            { x: -0.8, z: roomCenterZ + 2.7, rotation: Math.PI / 4 },
-            { x: 2.0, z: roomCenterZ + 2.7, rotation: -Math.PI / 4 }
-        ].forEach(({ x, z, rotation }) => createFreeSeatSet(x, z, rotation));
+        // 部屋中央に移動したフリー席は内装整理中のため配置しない。
+        if (SHOW_INTERIOR_OBJECTS) {
+            [
+                { x: -0.8, z: roomCenterZ - 2.7, rotation: Math.PI / 4 },
+                { x: 2.0, z: roomCenterZ - 2.7, rotation: -Math.PI / 4 },
+                { x: -0.8, z: roomCenterZ, rotation: -Math.PI / 4 },
+                { x: 2.0, z: roomCenterZ, rotation: Math.PI / 4 },
+                { x: -0.8, z: roomCenterZ + 2.7, rotation: Math.PI / 4 },
+                { x: 2.0, z: roomCenterZ + 2.7, rotation: -Math.PI / 4 }
+            ].forEach(({ x, z, rotation }) => createFreeSeatSet(x, z, rotation));
+        }
 
         // x=-5〜+2、z=+1、Z幅約1ポイント、高さ約1.22ポイントの木目調カウンター。天板は黒大理石。
         createWoodMarbleCounter();
@@ -2637,7 +2608,7 @@
         createRaisedLatticePlatform();
 
         // z=4 の壁をカフェカウンター化し、壁内側に店員を配置する。
-        createCafeCounterInWall();
+        if (SHOW_INTERIOR_OBJECTS) createCafeCounterInWall();
 
         function createWallDeskStation(x, z, facingAngle) {
             const stationGroup = new THREE.Group();
@@ -3290,11 +3261,11 @@
             scene.add(group);
         }
 
-        createOfficeGlicoRack(alcoveEnd + 0.68, roomDepth / 2 - 0.36);
-        createVendingMachine(-25.4, -6.34);
-        createCoffeeStation(24.9, -3.5);
-        createBoxSeatStation(24.9, 1.5, 0x459a85, 0x608ab6);
-        createBoxSeatStation(24.9, 5.0, 0x608ab6, 0x459a85);
+        if (SHOW_INTERIOR_OBJECTS) createOfficeGlicoRack(alcoveEnd + 0.68, roomDepth / 2 - 0.36);
+        if (SHOW_INTERIOR_OBJECTS) createVendingMachine(-25.4, -6.34);
+        if (SHOW_INTERIOR_OBJECTS) createCoffeeStation(24.9, -3.5);
+        if (SHOW_INTERIOR_OBJECTS) createBoxSeatStation(24.9, 1.5, 0x459a85, 0x608ab6);
+        if (SHOW_INTERIOR_OBJECTS) createBoxSeatStation(24.9, 5.0, 0x608ab6, 0x459a85);
 
         // ==========================================
         // 9. 人物配置（3Dポリゴン）
@@ -3414,7 +3385,7 @@
             { x: -3.8, z: 10.45, rotation: Math.PI * 0.04, pose: 'standing' }
         );
 
-        peoplePlacements.forEach((placement, index) => {
+        if (SHOW_INTERIOR_OBJECTS) peoplePlacements.forEach((placement, index) => {
             const person = createLowPolyPerson({ pose: placement.pose, variant: index });
             person.position.set(placement.x, 0, placement.z);
             person.rotation.y = placement.rotation;
