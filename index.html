@@ -451,6 +451,7 @@
     </div>
   </div>
 
+  <script src="./editable-config.js"></script>
   <script>
     // ==========================================
         // デバイス判定 & 開発・デバッグ用設定
@@ -458,21 +459,13 @@
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         const SHOW_COORDINATES = true;
         const SHOW_COORDINATE_GUIDES = true;
-        // 部屋の外周・当たり判定・座標ガイドなど、互いに連動する基準値だけを集約する。
-        const ROOM_LAYOUT = Object.freeze({
-            outerMinX: -18,
-            outerMaxX: 18,
-            baseDepth: 14,
-            backExtension: 10,
-            frontMaxZ: 17.16,
-            wallThickness: 0.2,
-            playerWallPadding: 0.45
-        });
-        const SHOWCASE_CLEARANCE = 0.25;
-        const COORDINATE_GUIDE_MIN_X = -16;
-        const COORDINATE_GUIDE_MAX_X = 16;
-        const COORDINATE_GUIDE_MIN_Z = -15;
-        const COORDINATE_GUIDE_MAX_Z = ROOM_LAYOUT.frontMaxZ;
+        const EDITABLE_CONFIG = window.RESKI_EDITABLE_CONFIG || {};
+        const ROOM_LAYOUT = EDITABLE_CONFIG.roomLayout;
+        const SHOWCASE_CLEARANCE = EDITABLE_CONFIG.showcaseClearance;
+        const COORDINATE_GUIDE_MIN_X = EDITABLE_CONFIG.coordinateGuides.minX;
+        const COORDINATE_GUIDE_MAX_X = EDITABLE_CONFIG.coordinateGuides.maxX;
+        const COORDINATE_GUIDE_MIN_Z = EDITABLE_CONFIG.coordinateGuides.minZ;
+        const COORDINATE_GUIDE_MAX_Z = EDITABLE_CONFIG.coordinateGuides.maxZ;
         
         let isPlaying = false;
         let copyToastTimer = null;
@@ -1705,23 +1698,8 @@
         // ==========================================
         // 残す内装: 黒大理石カウンターと高台
         // ==========================================
-        // 単体で動かす内装は、今後の追加・微修正に備えて配置データとしてまとめる。
-        const INTERIOR_OBJECTS = Object.freeze([
-            {
-                id: 'main-marble-counter',
-                type: 'woodMarbleCounter',
-                minX: -5.0,
-                maxX: 2.0,
-                depth: 1.0,
-                height: 1.22,
-                topThickness: 0.08,
-                centerZ: 4.41
-            },
-            {
-                id: 'raised-lattice-platform',
-                type: 'raisedLatticePlatform'
-            }
-        ]);
+        // 単体で動かす内装は editable-config.js の配置データから生成する。
+        const INTERIOR_OBJECTS = EDITABLE_CONFIG.interiorObjects;
 
         function setMeshShadow(mesh, receive = false) {
             mesh.castShadow = true;
