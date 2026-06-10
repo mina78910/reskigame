@@ -461,7 +461,7 @@
         const COORDINATE_GUIDE_MIN_X = -16;
         const COORDINATE_GUIDE_MAX_X = 16;
         const COORDINATE_GUIDE_MIN_Z = -15;
-        const COORDINATE_GUIDE_MAX_Z = 15;
+        const COORDINATE_GUIDE_MAX_Z = 17.16;
         
         let isPlaying = false;
         let copyToastTimer = null;
@@ -1618,7 +1618,8 @@
             createWall(targetWidth + 0.4, roomHeight, 0.2, targetCenterX, roomHeight / 2, maxZ + 0.1, shellWallColor);
         }
 
-        removeFrontInteriorWalls(-16.50, 17.75, 4.23, 17.16);
+        removeFrontInteriorWalls(-17.75, 17.75, 4.23, 17.16);
+        createWall(0.2, roomHeight, 17.16 - roomDepth / 2, -roomWidth / 2, roomHeight / 2, (roomDepth / 2 + 17.16) / 2, 0xd8d5ca);
 
         // ==========================================
         // メイン天井 
