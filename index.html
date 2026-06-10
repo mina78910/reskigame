@@ -458,10 +458,21 @@
         const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
         const SHOW_COORDINATES = true;
         const SHOW_COORDINATE_GUIDES = true;
+        // 部屋の外周・当たり判定・座標ガイドなど、互いに連動する基準値だけを集約する。
+        const ROOM_LAYOUT = Object.freeze({
+            outerMinX: -18,
+            outerMaxX: 18,
+            baseDepth: 14,
+            backExtension: 10,
+            frontMaxZ: 17.16,
+            wallThickness: 0.2,
+            playerWallPadding: 0.45
+        });
+        const SHOWCASE_CLEARANCE = 0.25;
         const COORDINATE_GUIDE_MIN_X = -16;
         const COORDINATE_GUIDE_MAX_X = 16;
         const COORDINATE_GUIDE_MIN_Z = -15;
-        const COORDINATE_GUIDE_MAX_Z = 17.16;
+        const COORDINATE_GUIDE_MAX_Z = ROOM_LAYOUT.frontMaxZ;
         
         let isPlaying = false;
         let copyToastTimer = null;
@@ -522,9 +533,9 @@
         // 3. 空間のベース構築
         // ==========================================
         // X方向は左右を7ポイントずつ縮小し、Z方向はマイナス側だけ10ポイント拡張する。
-        const roomWidth = 36;
-        const roomDepth = 14;
-        const roomBackExtension = 10;
+        const roomWidth = ROOM_LAYOUT.outerMaxX - ROOM_LAYOUT.outerMinX;
+        const roomDepth = ROOM_LAYOUT.baseDepth;
+        const roomBackExtension = ROOM_LAYOUT.backExtension;
         const roomFrontZ = roomDepth / 2;
         const roomBackZ = -roomDepth / 2 - roomBackExtension;
         const roomFullDepth = roomFrontZ - roomBackZ;
@@ -1618,8 +1629,21 @@
             createWall(targetWidth + 0.4, roomHeight, 0.2, targetCenterX, roomHeight / 2, maxZ + 0.1, shellWallColor);
         }
 
-        removeFrontInteriorWalls(-17.75, 17.75, 4.23, 17.16);
-        createWall(0.2, roomHeight, 17.16 - roomDepth / 2, -roomWidth / 2, roomHeight / 2, (roomDepth / 2 + 17.16) / 2, 0xd8d5ca);
+        removeFrontInteriorWalls(
+            ROOM_LAYOUT.outerMinX + SHOWCASE_CLEARANCE,
+            ROOM_LAYOUT.outerMaxX - SHOWCASE_CLEARANCE,
+            4.23,
+            ROOM_LAYOUT.frontMaxZ
+        );
+        createWall(
+            ROOM_LAYOUT.wallThickness,
+            roomHeight,
+            ROOM_LAYOUT.frontMaxZ - roomDepth / 2,
+            ROOM_LAYOUT.outerMinX,
+            roomHeight / 2,
+            (roomDepth / 2 + ROOM_LAYOUT.frontMaxZ) / 2,
+            0xd8d5ca
+        );
 
         // ==========================================
         // メイン天井 
@@ -1629,7 +1653,7 @@
         scene.add(ceilingGroup);
 
         const mainCeilingMinZ = backWallZ;
-        const mainCeilingMaxZ = 17.16;
+        const mainCeilingMaxZ = ROOM_LAYOUT.frontMaxZ;
         const mainCeilingDepth = mainCeilingMaxZ - mainCeilingMinZ;
         const mainCeilingCenterZ = (mainCeilingMinZ + mainCeilingMaxZ) / 2;
         const ceilingPlaneGeo = new THREE.PlaneGeometry(roomWidth, mainCeilingDepth);
@@ -1681,21 +1705,40 @@
         // ==========================================
         // 残す内装: 黒大理石カウンターと高台
         // ==========================================
+        // 単体で動かす内装は、今後の追加・微修正に備えて配置データとしてまとめる。
+        const INTERIOR_OBJECTS = Object.freeze([
+            {
+                id: 'main-marble-counter',
+                type: 'woodMarbleCounter',
+                minX: -5.0,
+                maxX: 2.0,
+                depth: 1.0,
+                height: 1.22,
+                topThickness: 0.08,
+                centerZ: 4.41
+            },
+            {
+                id: 'raised-lattice-platform',
+                type: 'raisedLatticePlatform'
+            }
+        ]);
+
         function setMeshShadow(mesh, receive = false) {
             mesh.castShadow = true;
             if (receive) mesh.receiveShadow = true;
         }
 
-        function createWoodMarbleCounter() {
+        function createWoodMarbleCounter(config) {
             const group = new THREE.Group();
-            const counterMinX = -5.0;
-            const counterMaxX = 2.0;
+            group.name = config.id;
+            const counterMinX = config.minX;
+            const counterMaxX = config.maxX;
             const counterWidth = counterMaxX - counterMinX;
-            const counterDepth = 1.0;
-            const counterHeight = 1.22;
-            const counterTopThickness = 0.08;
+            const counterDepth = config.depth;
+            const counterHeight = config.height;
+            const counterTopThickness = config.topThickness;
             const counterCenterX = (counterMinX + counterMaxX) / 2;
-            const counterCenterZ = 4.41;
+            const counterCenterZ = config.centerZ;
 
             const woodTex = createWoodTexture();
             woodTex.repeat.set(3.5, 1.35);
@@ -1818,8 +1861,20 @@
             scene.add(group);
         }
 
-        createWoodMarbleCounter();
-        createRaisedLatticePlatform();
+        function buildInteriorObject(config) {
+            switch (config.type) {
+                case 'woodMarbleCounter':
+                    createWoodMarbleCounter(config);
+                    break;
+                case 'raisedLatticePlatform':
+                    createRaisedLatticePlatform(config);
+                    break;
+                default:
+                    console.warn(`Unknown interior object type: ${config.type}`);
+            }
+        }
+
+        INTERIOR_OBJECTS.forEach(buildInteriorObject);
 
         // ==========================================
         // 10. コントローラー (PC & モバイル対応)
@@ -2139,7 +2194,7 @@
                 if(camera.position.x > boundXMax) camera.position.x = boundXMax; 
                 if(camera.position.z < boundZMin) camera.position.z = boundZMin; 
                 
-                const walkableFrontMaxZ = 17.16 - 0.45;
+                const walkableFrontMaxZ = ROOM_LAYOUT.frontMaxZ - ROOM_LAYOUT.playerWallPadding;
 
                 if (camera.position.z > walkableFrontMaxZ) camera.position.z = walkableFrontMaxZ;
             }
