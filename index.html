@@ -1233,33 +1233,149 @@
         }
 
         // ==========================================
-        // 残す内装: 黒大理石カウンターと高台
+        // カフェ内装: ユーザー指定座標から生成
         // ==========================================
-        // 単体で動かす内装は editable-config.js の配置データから生成する。
-        const INTERIOR_OBJECTS = EDITABLE_CONFIG.interiorObjects;
+        // editable-config.js の cafeLayout は、いただいた「Z, X」座標を pointsZX として保持している。
+        const CAFE_LAYOUT = EDITABLE_CONFIG.cafeLayout || {};
 
         function setMeshShadow(mesh, receive = false) {
             mesh.castShadow = true;
             if (receive) mesh.receiveShadow = true;
         }
 
-        function createWoodMarbleCounter(config) {
+        function getRectFromPointsZX(pointsZX, fallbackWidth = 1, fallbackDepth = 1) {
+            const xs = pointsZX.map((point) => point.x);
+            const zs = pointsZX.map((point) => point.z);
+            let minX = Math.min(...xs);
+            let maxX = Math.max(...xs);
+            let minZ = Math.min(...zs);
+            let maxZ = Math.max(...zs);
+            if (maxX - minX < 0.01) {
+                minX -= fallbackWidth / 2;
+                maxX += fallbackWidth / 2;
+            }
+            if (maxZ - minZ < 0.01) {
+                minZ -= fallbackDepth / 2;
+                maxZ += fallbackDepth / 2;
+            }
+            return {
+                minX,
+                maxX,
+                minZ,
+                maxZ,
+                width: maxX - minX,
+                depth: maxZ - minZ,
+                centerX: (minX + maxX) / 2,
+                centerZ: (minZ + maxZ) / 2
+            };
+        }
+
+        function createLabelSprite(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+            ctx.roundRect(12, 18, 488, 92, 18);
+            ctx.fill();
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = 'bold 42px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 3);
+            const texture = new THREE.CanvasTexture(canvas);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+            sprite.scale.set(2.4, 0.6, 1);
+            return sprite;
+        }
+
+        function addObjectLabel(group, label, y = 1.6) {
+            if (!label) return;
+            const sprite = createLabelSprite(label);
+            sprite.position.set(0, y, 0);
+            group.add(sprite);
+        }
+
+        function createBoxObject({ id, label, rect, height, material, y = 0, labelY }) {
+            const group = new THREE.Group();
+            group.name = id;
+            const box = new THREE.Mesh(new THREE.BoxGeometry(rect.width, height, rect.depth), material);
+            box.position.y = y + height / 2;
+            setMeshShadow(box, true);
+            group.add(box);
+            addObjectLabel(group, label, labelY ?? (y + height + 0.45));
+            group.position.set(rect.centerX, 0, rect.centerZ);
+            scene.add(group);
+            return group;
+        }
+
+        function createPolygonPlatform(config, material) {
+            const points = config.pointsZX.map((point) => new THREE.Vector2(point.x, point.z));
+            const centerX = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+            const centerZ = points.reduce((sum, point) => sum + point.y, 0) / points.length;
+            const shape = new THREE.Shape(points.map((point) => new THREE.Vector2(point.x - centerX, -(point.y - centerZ))));
+            const geometry = new THREE.ExtrudeGeometry(shape, { depth: config.height, bevelEnabled: false });
+            geometry.rotateX(-Math.PI / 2);
+            const platform = new THREE.Mesh(geometry, material);
+            setMeshShadow(platform, true);
+
             const group = new THREE.Group();
             group.name = config.id;
-            const counterMinX = config.minX;
-            const counterMaxX = config.maxX;
-            const counterWidth = counterMaxX - counterMinX;
-            const counterDepth = config.depth;
+            group.add(platform);
+            addObjectLabel(group, config.label, config.height + 0.55);
+            group.position.set(centerX, 0, centerZ);
+            scene.add(group);
+            return group;
+        }
+
+        const cafeWoodMat = new THREE.MeshStandardMaterial({ map: createWoodTexture(), roughness: 0.58, metalness: 0.02 });
+        const cafeDarkWoodMat = new THREE.MeshStandardMaterial({ color: 0x4a2d1a, roughness: 0.72 });
+        const cafeBlackMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.42, metalness: 0.32 });
+        const cafeChairMat = new THREE.MeshStandardMaterial({ color: 0x7c4a28, roughness: 0.65 });
+        const cafeStageMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.64 });
+
+        function createCafeShell(shellConfig) {
+            if (!shellConfig) return;
+            const rect = getRectFromPointsZX(shellConfig.pointsZX);
+            const wallHeight = roomHeight;
+            const wallThickness = 0.12;
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xf5e6cf, roughness: 0.62 });
+            const group = new THREE.Group();
+            group.name = 'cafe-shell';
+
+            [
+                { w: rect.width, d: wallThickness, x: 0, z: -rect.depth / 2 },
+                { w: rect.width, d: wallThickness, x: 0, z: rect.depth / 2 },
+                { w: wallThickness, d: rect.depth, x: -rect.width / 2, z: 0 },
+                { w: wallThickness, d: rect.depth, x: rect.width / 2, z: 0 }
+            ].forEach((wall) => {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(wall.w, wallHeight, wall.d), wallMat);
+                mesh.position.set(wall.x, wallHeight / 2, wall.z);
+                setMeshShadow(mesh, true);
+                group.add(mesh);
+            });
+            addObjectLabel(group, 'カフェ', wallHeight + 0.35);
+            group.position.set(rect.centerX, 0, rect.centerZ);
+            scene.add(group);
+        }
+
+        function createWoodMarbleCounter(config) {
+            const rect = getRectFromPointsZX(config.pointsZX || [
+                { z: config.centerZ - config.depth / 2, x: config.minX },
+                { z: config.centerZ + config.depth / 2, x: config.maxX }
+            ]);
+            const group = new THREE.Group();
+            group.name = config.id;
+            const counterWidth = rect.width;
+            const counterDepth = rect.depth;
             const counterHeight = config.height;
             const counterTopThickness = config.topThickness;
-            const counterCenterX = (counterMinX + counterMaxX) / 2;
-            const counterCenterZ = config.centerZ;
 
             const woodTex = createWoodTexture();
-            woodTex.repeat.set(3.5, 1.35);
+            woodTex.repeat.set(Math.max(1, counterWidth / 2), 1.35);
             const woodMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.58, metalness: 0.03 });
             const marbleTex = createBlackMarbleTexture();
-            marbleTex.repeat.set(4.8, 0.8);
+            marbleTex.repeat.set(Math.max(1, counterWidth / 1.8), Math.max(0.6, counterDepth));
             const marbleMat = new THREE.MeshStandardMaterial({
                 map: marbleTex,
                 color: 0x111111,
@@ -1278,118 +1394,197 @@
             setMeshShadow(top, true);
             group.add(top);
 
-            const toeKick = new THREE.Mesh(
-                new THREE.BoxGeometry(counterWidth - 0.28, 0.18, counterDepth + 0.03),
-                new THREE.MeshStandardMaterial({ color: 0x2d1c12, roughness: 0.74 })
-            );
-            toeKick.position.set(0, 0.09, 0.02);
-            setMeshShadow(toeKick);
-            group.add(toeKick);
-
             const panelLineMat = new THREE.MeshStandardMaterial({ color: 0x5b3924, roughness: 0.68 });
-            [-counterWidth / 4, 0, counterWidth / 4].forEach((x) => {
+            const dividerCount = Math.max(2, Math.floor(counterWidth / 2));
+            for (let i = 1; i < dividerCount; i++) {
+                const x = -counterWidth / 2 + (counterWidth / dividerCount) * i;
                 const divider = new THREE.Mesh(new THREE.BoxGeometry(0.035, baseHeight - 0.18, 0.025), panelLineMat);
                 divider.position.set(x, baseHeight / 2 + 0.08, counterDepth / 2 + 0.016);
                 setMeshShadow(divider);
                 group.add(divider);
-            });
+            }
 
-            group.position.set(counterCenterX, 0, counterCenterZ);
+            addObjectLabel(group, config.label, counterHeight + 0.45);
+            group.position.set(rect.centerX, 0, rect.centerZ);
             scene.add(group);
         }
 
-        function createRaisedLatticePlatform() {
-            const group = new THREE.Group();
-            const platformMinX = 9.0;
-            const platformMaxX = 14.0;
-            const platformMinZ = -10.0;
-            const platformMaxZ = 0.0;
-            const platformWidth = platformMaxX - platformMinX;
-            const platformHeight = 0.45;
-            const platformCenterX = (platformMinX + platformMaxX) / 2;
-            const platformCenterZ = (platformMinZ + platformMaxZ) / 2;
-            const stepCount = 3;
-            const stepDepth = 0.55;
-            const stepHeight = platformHeight / stepCount;
-            const deckStartZ = platformMaxZ - stepDepth * stepCount;
-
-            const deckTex = createWoodTexture();
-            deckTex.repeat.set(platformWidth / 1.2, (deckStartZ - platformMinZ) / 1.2);
-            const deckMat = new THREE.MeshStandardMaterial({ map: deckTex, roughness: 0.58, metalness: 0.02 });
-            const riserMat = new THREE.MeshStandardMaterial({ color: 0x4a2d1a, roughness: 0.72 });
-            const latticeMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.42, metalness: 0.35 });
-
-            const deckDepth = deckStartZ - platformMinZ;
-            const deck = new THREE.Mesh(new THREE.BoxGeometry(platformWidth, platformHeight, deckDepth), deckMat);
-            deck.position.set(platformCenterX, platformHeight / 2, platformMinZ + deckDepth / 2);
-            setMeshShadow(deck, true);
-            group.add(deck);
-
-            for (let i = 0; i < stepCount; i++) {
-                const currentHeight = stepHeight * (i + 1);
-                const stepZ = platformMaxZ - stepDepth * (i + 0.5);
-                const step = new THREE.Mesh(new THREE.BoxGeometry(platformWidth, currentHeight, stepDepth), i === stepCount - 1 ? deckMat : riserMat);
-                step.position.set(platformCenterX, currentHeight / 2, stepZ);
-                setMeshShadow(step, true);
-                group.add(step);
-            }
-
+        function createRaisedLatticePlatform(config) {
+            const group = createPolygonPlatform(config, cafeWoodMat);
+            const rect = getRectFromPointsZX(config.pointsZX);
             const postSize = 0.08;
             const fenceHeight = 1.15;
-            const fenceBaseY = platformHeight;
+            const fenceBaseY = config.height;
             const postGeo = new THREE.BoxGeometry(postSize, fenceHeight, postSize);
-            const railXGeo = new THREE.BoxGeometry(platformWidth + postSize, 0.045, 0.045);
-            const railZGeo = new THREE.BoxGeometry(0.045, 0.045, platformMaxZ - platformMinZ + postSize);
+            const railXGeo = new THREE.BoxGeometry(rect.width + postSize, 0.045, 0.045);
+            const railZGeo = new THREE.BoxGeometry(0.045, 0.045, rect.depth + postSize);
             const railYs = [fenceBaseY + 0.28, fenceBaseY + 0.62, fenceBaseY + 0.96];
 
+            function localX(x) { return x - rect.centerX; }
+            function localZ(z) { return z - rect.centerZ; }
             function addPost(x, z) {
-                const post = new THREE.Mesh(postGeo, latticeMat);
-                post.position.set(x, fenceBaseY + fenceHeight / 2, z);
+                const post = new THREE.Mesh(postGeo, cafeBlackMat);
+                post.position.set(localX(x), fenceBaseY + fenceHeight / 2, localZ(z));
                 setMeshShadow(post);
                 group.add(post);
             }
 
-            for (let x = platformMinX; x <= platformMaxX + 0.001; x += 1.0) {
-                addPost(x, platformMinZ);
-                addPost(x, platformMaxZ);
+            for (let x = rect.minX; x <= rect.maxX + 0.001; x += 1.0) {
+                addPost(x, rect.minZ);
+                addPost(x, rect.maxZ);
             }
-            for (let z = platformMinZ + 1.0; z < platformMaxZ - 0.001; z += 1.0) {
-                addPost(platformMinX, z);
-                addPost(platformMaxX, z);
+            for (let z = rect.minZ + 1.0; z < rect.maxZ - 0.001; z += 1.0) {
+                addPost(rect.minX, z);
+                addPost(rect.maxX, z);
             }
-
             railYs.forEach((y) => {
-                [platformMinZ, platformMaxZ].forEach((z) => {
-                    const rail = new THREE.Mesh(railXGeo, latticeMat);
-                    rail.position.set(platformCenterX, y, z);
+                [rect.minZ, rect.maxZ].forEach((z) => {
+                    const rail = new THREE.Mesh(railXGeo, cafeBlackMat);
+                    rail.position.set(0, y, localZ(z));
                     setMeshShadow(rail);
                     group.add(rail);
                 });
-                [platformMinX, platformMaxX].forEach((x) => {
-                    const rail = new THREE.Mesh(railZGeo, latticeMat);
-                    rail.position.set(x, y, platformCenterZ);
+                [rect.minX, rect.maxX].forEach((x) => {
+                    const rail = new THREE.Mesh(railZGeo, cafeBlackMat);
+                    rail.position.set(localX(x), y, 0);
                     setMeshShadow(rail);
                     group.add(rail);
                 });
             });
+        }
 
+        function createLongTableWithBenches(config) {
+            const [start, end] = config.pointsZX;
+            const startVec = new THREE.Vector3(start.x, 0, start.z);
+            const endVec = new THREE.Vector3(end.x, 0, end.z);
+            const mid = startVec.clone().add(endVec).multiplyScalar(0.5);
+            const length = startVec.distanceTo(endVec);
+            const angle = Math.atan2(end.x - start.x, end.z - start.z);
+            const group = new THREE.Group();
+            group.name = config.id;
+
+            const table = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, length), cafeDarkWoodMat);
+            table.position.y = 0.75;
+            setMeshShadow(table, true);
+            group.add(table);
+            [-0.62, 0.62].forEach((x) => {
+                const bench = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.08, length), cafeChairMat);
+                bench.position.set(x, 0.45, 0);
+                setMeshShadow(bench, true);
+                group.add(bench);
+            });
+            [-length / 2 + 0.35, length / 2 - 0.35].forEach((z) => {
+                [-0.3, 0.3].forEach((x) => {
+                    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, 0.08), cafeBlackMat);
+                    leg.position.set(x, 0.35, z);
+                    setMeshShadow(leg);
+                    group.add(leg);
+                });
+            });
+            addObjectLabel(group, config.label, 1.35);
+            group.position.copy(mid);
+            group.rotation.y = angle;
             scene.add(group);
         }
 
-        function buildInteriorObject(config) {
+        function createSquareDiningSet(x, z) {
+            const group = new THREE.Group();
+            group.position.set(x, 0, z);
+            const table = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.9), cafeDarkWoodMat);
+            table.position.y = 0.72;
+            setMeshShadow(table, true);
+            group.add(table);
+            [
+                { x: 0, z: 0.78, w: 0.54, d: 0.32 },
+                { x: 0, z: -0.78, w: 0.54, d: 0.32 },
+                { x: 0.78, z: 0, w: 0.32, d: 0.54 },
+                { x: -0.78, z: 0, w: 0.32, d: 0.54 }
+            ].forEach((chairConfig) => {
+                const chair = new THREE.Mesh(new THREE.BoxGeometry(chairConfig.w, 0.42, chairConfig.d), cafeChairMat);
+                chair.position.set(chairConfig.x, 0.21, chairConfig.z);
+                setMeshShadow(chair, true);
+                group.add(chair);
+            });
+            scene.add(group);
+            return group;
+        }
+
+        function createSquareTableSets(config) {
+            const rect = getRectFromPointsZX(config.pointsZX);
+            const positions = [
+                [rect.minX + rect.width * 0.28, rect.minZ + rect.depth * 0.28],
+                [rect.maxX - rect.width * 0.28, rect.minZ + rect.depth * 0.28],
+                [rect.minX + rect.width * 0.28, rect.maxZ - rect.depth * 0.28],
+                [rect.maxX - rect.width * 0.28, rect.maxZ - rect.depth * 0.28]
+            ];
+            const labelGroup = new THREE.Group();
+            labelGroup.name = config.id;
+            addObjectLabel(labelGroup, config.label, 1.35);
+            labelGroup.position.set(rect.centerX, 0, rect.centerZ);
+            scene.add(labelGroup);
+            positions.slice(0, config.count || 4).forEach(([x, z]) => createSquareDiningSet(x, z));
+        }
+
+        function createCounterSeats(config) {
+            const rect = getRectFromPointsZX(config.pointsZX);
+            const group = new THREE.Group();
+            group.name = config.id;
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(rect.width, 0.08, rect.depth), cafeDarkWoodMat);
+            bar.position.y = 0.95;
+            setMeshShadow(bar, true);
+            group.add(bar);
+            const stoolCount = Math.max(4, Math.floor(rect.width / 1.6));
+            for (let i = 0; i < stoolCount; i++) {
+                const x = -rect.width / 2 + (rect.width / (stoolCount - 1)) * i;
+                const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.52, 18), cafeChairMat);
+                stool.position.set(x, 0.26, rect.depth / 2 + 0.55);
+                setMeshShadow(stool, true);
+                group.add(stool);
+            }
+            addObjectLabel(group, config.label, 1.45);
+            group.position.set(rect.centerX, 0, rect.centerZ);
+            scene.add(group);
+        }
+
+        function createPlatformObject(config) {
+            if (config.id === 'raised-platform') {
+                createRaisedLatticePlatform(config);
+                return;
+            }
+            const rect = getRectFromPointsZX(config.pointsZX, config.width, config.depth);
+            const material = config.id === 'stage-strip' ? cafeStageMat : cafeWoodMat;
+            createBoxObject({
+                id: config.id,
+                label: config.label,
+                rect,
+                height: config.height,
+                material,
+                labelY: config.height + 0.45
+            });
+        }
+
+        function buildCafeFurniture(config) {
             switch (config.type) {
                 case 'woodMarbleCounter':
                     createWoodMarbleCounter(config);
                     break;
-                case 'raisedLatticePlatform':
-                    createRaisedLatticePlatform(config);
+                case 'longTableWithBenches':
+                    createLongTableWithBenches(config);
+                    break;
+                case 'squareTableSets':
+                    createSquareTableSets(config);
+                    break;
+                case 'counterSeats':
+                    createCounterSeats(config);
                     break;
                 default:
-                    console.warn(`Unknown interior object type: ${config.type}`);
+                    console.warn(`Unknown cafe furniture type: ${config.type}`);
             }
         }
 
-        INTERIOR_OBJECTS.forEach(buildInteriorObject);
+        createCafeShell(CAFE_LAYOUT.shell);
+        (CAFE_LAYOUT.platforms || []).forEach(createPlatformObject);
+        (CAFE_LAYOUT.furniture || []).forEach(buildCafeFurniture);
 
         // ==========================================
         // 10. コントローラー (PC & モバイル対応)

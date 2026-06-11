@@ -32,39 +32,140 @@
       maxZ: roomLayout.frontMaxZ
     },
 
-    // 単体で動かす内装。位置・サイズの微修正はここを編集してください。
-    // 細かい形状（へこみ・でっぱり・手すり等）は index.html の各 create... 関数で生成します。
-    // それらの凹凸はオブジェクト原点からの相対位置で作るため、親の position を変えると一緒に追従します。
-    //
-    // 各項目の見方:
-    // - id: 管理用の名前です。重複しないようにします。
-    // - type: 生成する物の種類です。index.html 側の create... 関数と対応しています。
-    // - minX / maxX: 左右方向の端の位置です。差分が横幅になります。
-    // - centerZ: 奥行き方向の中心位置です。
-    // - depth: 手前/奥方向の厚みです。
-    // - height: 床から上面までの高さです。
-    // - topThickness: 天板だけの厚みです。
-    interiorObjects: [
-      // 物の名前: 木目＋黒大理石カウンター
-      // 概要: 正面寄りに置く受付/作業用の横長カウンターです。
-      //       minX/maxX で横幅、centerZ で前後位置、depth/height/topThickness で大きさを調整します。
-      {
-        id: 'main-marble-counter',
-        type: 'woodMarbleCounter',
-        minX: -5.0,
-        maxX: 2.0,
-        depth: 1.0,
-        height: 1.22,
-        topThickness: 0.08,
-        centerZ: 4.41
+    // カフェ区画の最新配置。ユーザー指定は「Z, X」順なので、ここでは pointsZX にそのまま保持します。
+    // 不足している奥行き・幅・向きは index.html 側で仮寸法を補って生成します。
+    cafeLayout: {
+      shell: {
+        pointsZX: [
+          { z: 17, x: 7 },
+          { z: 10, x: 7 },
+          { z: 17, x: -7 },
+          { z: 10, x: -7 }
+        ]
       },
-      // 物の名前: 黒格子付き高台
-      // 概要: 右奥側に置く、木製デッキ・階段・黒い格子手すりを組み合わせた高台です。
-      //       現状は形状と位置を index.html の createRaisedLatticePlatform 関数で固定生成しています。
-      {
-        id: 'raised-lattice-platform',
-        type: 'raisedLatticePlatform'
-      }
-    ]
+      platforms: [
+        {
+          id: 'single-front-stand',
+          label: '台',
+          pointsZX: [{ z: 9, x: 7 }],
+          width: 1.25,
+          depth: 1.25,
+          height: 2
+        },
+        {
+          id: 'raised-platform',
+          label: '高台',
+          pointsZX: [
+            { z: 0, x: 14 },
+            { z: -12, x: 14 },
+            { z: -11, x: 9 },
+            { z: 0, x: 9 }
+          ],
+          height: 2
+        },
+        {
+          id: 'serving-counter',
+          label: '配膳台',
+          pointsZX: [
+            { z: 17, x: -16 },
+            { z: 17, x: -14 },
+            { z: 4, x: -16 },
+            { z: 4, x: -14 }
+          ],
+          height: 2
+        },
+        {
+          id: 'stage-strip',
+          label: 'ステージ',
+          pointsZX: [
+            { z: 4, x: -14 },
+            { z: 4, x: -16 }
+          ],
+          depth: 1.4,
+          height: 0.3
+        },
+        {
+          id: 'back-stand',
+          label: '台',
+          pointsZX: [
+            { z: 5, x: -7 },
+            { z: 13, x: -7 },
+            { z: 13, x: -8 },
+            { z: 5, x: -8 }
+          ],
+          height: 1.05
+        },
+        {
+          id: 'shelf',
+          label: '棚',
+          pointsZX: [
+            { z: 9, x: -7 },
+            { z: 9, x: -6 },
+            { z: 5, x: -7 },
+            { z: 5, x: -6 }
+          ],
+          height: 1.9
+        }
+      ],
+      furniture: [
+        {
+          id: 'main-marble-counter',
+          type: 'woodMarbleCounter',
+          label: '大理石カウンター',
+          pointsZX: [
+            { z: 6, x: 7 },
+            { z: 5, x: 7 },
+            { z: 6, x: -2 },
+            { z: 5, x: -2 }
+          ],
+          height: 1.22,
+          topThickness: 0.08
+        },
+        {
+          id: 'long-table-benches',
+          type: 'longTableWithBenches',
+          label: '長机＆両サイド水平長椅子',
+          pointsZX: [
+            { z: -3, x: 0 },
+            { z: 2, x: -3 }
+          ]
+        },
+        {
+          id: 'square-table-zone-front',
+          type: 'squareTableSets',
+          label: '四角テーブル＆４椅子セット×4',
+          pointsZX: [
+            { z: -4, x: 6 },
+            { z: -4, x: 1 },
+            { z: 1, x: 1 },
+            { z: 1, x: 6 }
+          ],
+          count: 4
+        },
+        {
+          id: 'square-table-zone-back',
+          type: 'squareTableSets',
+          label: '四角テーブル＆４椅子セット×4',
+          pointsZX: [
+            { z: 1, x: -5 },
+            { z: 1, x: -8 },
+            { z: -4, x: -5 },
+            { z: -4, x: -8 }
+          ],
+          count: 4
+        },
+        {
+          id: 'counter-seats',
+          type: 'counterSeats',
+          label: 'カウンター席テーブルつき',
+          pointsZX: [
+            { z: -14, x: -16 },
+            { z: -15, x: -16 },
+            { z: -14, x: -2 },
+            { z: -15, x: -2 }
+          ]
+        }
+      ]
+    }
   };
 }());
