@@ -65,32 +65,24 @@
         id: 'raised-lattice-platform',
         type: 'raisedLatticePlatform'
       },
-      // 物の名前: 木製ダイニングセット A/B
-      // 概要: 参考画像のような、明るい木目の小さめ四角テーブルと4脚の木製チェアです。
-      //       指定範囲 X:1〜6 / Z:-4〜1 の中に、少し角度を変えて2個配置しています。
+      // 物の名前: 整列した学習テーブル＆チェア
+      // 概要: 参考画像のような、明るい天板・黒い細脚・木板背もたれの机と椅子です。
+      //       指定された2つの範囲（X:-6〜1 / Z:-12〜-10、X:-6〜1 / Z:-8〜-6）に整列配置します。
       {
-        id: 'reference-wood-dining-set-a',
-        type: 'woodDiningSet',
-        centerX: 2.25,
-        centerZ: -2.75,
-        rotationY: -0.16,
-        tableSize: 1.15,
-        tableHeight: 0.66,
-        tableTopThickness: 0.06,
-        chairDistance: 0.88,
-        chairScale: 0.72
+        id: 'aligned-study-table-chair-zone-back',
+        type: 'alignedStudyTableChairs',
+        minX: -6.0,
+        maxX: 1.0,
+        centerZ: -11.0,
+        count: 5
       },
       {
-        id: 'reference-wood-dining-set-b',
-        type: 'woodDiningSet',
-        centerX: 4.75,
-        centerZ: -0.55,
-        rotationY: 0.22,
-        tableSize: 1.15,
-        tableHeight: 0.66,
-        tableTopThickness: 0.06,
-        chairDistance: 0.88,
-        chairScale: 0.72
+        id: 'aligned-study-table-chair-zone-front',
+        type: 'alignedStudyTableChairs',
+        minX: -6.0,
+        maxX: 1.0,
+        centerZ: -7.0,
+        count: 5
       }
     ]
   };

@@ -1377,74 +1377,37 @@
         }
 
 
-        function createWoodDiningSet(config) {
+        function createAlignedStudyTableChairs(config) {
             const group = new THREE.Group();
             group.name = config.id;
 
-            const tableSize = config.tableSize || 1.72;
-            const tableHeight = config.tableHeight || 0.76;
-            const tableTopThickness = config.tableTopThickness || 0.08;
-            const chairDistance = config.chairDistance || 1.35;
-            const chairScale = config.chairScale || 1;
-            const tableScale = tableSize / 1.72;
+            const minX = config.minX;
+            const maxX = config.maxX;
+            const centerZ = config.centerZ;
+            const count = config.count || 5;
+            const tableWidth = config.tableWidth || 0.82;
+            const tableDepth = config.tableDepth || 0.58;
+            const tableHeight = config.tableHeight || 0.72;
+            const chairOffsetZ = config.chairOffsetZ || 0.58;
+            const sideInset = config.sideInset || 0.5;
+            const rowMinX = minX + sideInset;
+            const rowMaxX = maxX - sideInset;
+            const spacing = count > 1 ? (rowMaxX - rowMinX) / (count - 1) : 0;
 
-            const tableWoodTex = createWoodTexture();
-            tableWoodTex.repeat.set(1.25, 1.25);
-            const lightWoodMat = new THREE.MeshStandardMaterial({
-                map: tableWoodTex,
-                color: 0xf1c996,
-                roughness: 0.48,
-                metalness: 0.02
-            });
-            const chairWoodTex = createWoodTexture();
-            chairWoodTex.repeat.set(0.9, 0.9);
-            const chairWoodMat = new THREE.MeshStandardMaterial({
-                map: chairWoodTex,
-                color: 0xc17b37,
-                roughness: 0.56,
-                metalness: 0.015
-            });
-            const blackMetalMat = new THREE.MeshStandardMaterial({ color: 0x070707, roughness: 0.34, metalness: 0.72 });
-            const seatMat = new THREE.MeshStandardMaterial({ color: 0x9f8669, roughness: 0.82, metalness: 0.0 });
-
-            const top = new THREE.Mesh(new THREE.BoxGeometry(tableSize, tableTopThickness, tableSize), lightWoodMat);
-            top.position.y = tableHeight;
-            setMeshShadow(top, true);
-            group.add(top);
-
-            const edgeMat = new THREE.MeshStandardMaterial({ color: 0x9f6432, roughness: 0.62, metalness: 0.02 });
-            const edgeThickness = 0.055 * tableScale;
-            [
-                { x: 0, z: tableSize / 2 + edgeThickness / 2, w: tableSize + edgeThickness, d: edgeThickness },
-                { x: 0, z: -tableSize / 2 - edgeThickness / 2, w: tableSize + edgeThickness, d: edgeThickness },
-                { x: tableSize / 2 + edgeThickness / 2, z: 0, w: edgeThickness, d: tableSize },
-                { x: -tableSize / 2 - edgeThickness / 2, z: 0, w: edgeThickness, d: tableSize }
-            ].forEach(({ x, z, w, d }) => {
-                const edge = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07 * tableScale, d), edgeMat);
-                edge.position.set(x, tableHeight - 0.055 * tableScale, z);
-                setMeshShadow(edge);
-                group.add(edge);
+            const tableMat = new THREE.MeshStandardMaterial({ color: 0xe7ded2, roughness: 0.42, metalness: 0.02 });
+            const tableEdgeMat = new THREE.MeshStandardMaterial({ color: 0xb9aa98, roughness: 0.58, metalness: 0.02 });
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.38, metalness: 0.62 });
+            const seatMat = new THREE.MeshStandardMaterial({ color: 0xf1e7d5, roughness: 0.58, metalness: 0.02 });
+            const backWoodTex = createWoodTexture();
+            backWoodTex.repeat.set(0.7, 0.35);
+            const backMat = new THREE.MeshStandardMaterial({
+                map: backWoodTex,
+                color: 0xb06f33,
+                roughness: 0.62,
+                metalness: 0.01
             });
 
-            const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.065 * tableScale, 0.085 * tableScale, tableHeight - tableTopThickness, 24), blackMetalMat);
-            pedestal.position.y = (tableHeight - tableTopThickness) / 2;
-            setMeshShadow(pedestal);
-            group.add(pedestal);
-
-            const baseDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * tableScale, 0.4 * tableScale, 0.045 * tableScale, 32), blackMetalMat);
-            baseDisk.position.y = 0.045 * tableScale;
-            setMeshShadow(baseDisk, true);
-            group.add(baseDisk);
-
-            [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((rotationY) => {
-                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.72 * tableScale, 0.055 * tableScale, 0.115 * tableScale), blackMetalMat);
-                foot.position.set(Math.cos(rotationY) * 0.25 * tableScale, 0.045 * tableScale, -Math.sin(rotationY) * 0.25 * tableScale);
-                foot.rotation.y = rotationY;
-                setMeshShadow(foot, true);
-                group.add(foot);
-            });
-
-            function addCylinder(parent, radius, height, material, position, rotation = [0, 0, 0], segments = 16) {
+            function addCylinder(parent, radius, height, material, position, rotation = [0, 0, 0], segments = 12) {
                 const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, segments), material);
                 mesh.position.set(...position);
                 mesh.rotation.set(...rotation);
@@ -1453,57 +1416,69 @@
                 return mesh;
             }
 
-            function createChair(x, z, rotationY) {
+            function createStudyChair(z, rotationY) {
                 const chair = new THREE.Group();
-                chair.position.set(x, 0, z);
+                chair.position.z = z;
                 chair.rotation.y = rotationY;
-                chair.scale.setScalar(chairScale);
 
-                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 0.54), chairWoodMat);
-                seat.position.set(0, 0.47, 0);
+                const seat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.055, 0.38), seatMat);
+                seat.position.y = 0.44;
                 setMeshShadow(seat, true);
                 chair.add(seat);
 
-                const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.035, 0.43), seatMat);
-                cushion.position.set(0, 0.535, -0.015);
-                setMeshShadow(cushion, true);
-                chair.add(cushion);
+                const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.34, 0.055), backMat);
+                back.position.set(0, 0.76, 0.24);
+                setMeshShadow(back);
+                chair.add(back);
 
-                [
-                    [-0.25, 0.24, -0.2],
-                    [0.25, 0.24, -0.2],
-                    [-0.25, 0.24, 0.22],
-                    [0.25, 0.24, 0.22]
-                ].forEach((position) => addCylinder(chair, 0.032, 0.48, chairWoodMat, position));
+                const legPositions = [
+                    [-0.17, 0.22, -0.14],
+                    [0.17, 0.22, -0.14],
+                    [-0.17, 0.22, 0.14],
+                    [0.17, 0.22, 0.14]
+                ];
+                legPositions.forEach((position) => addCylinder(chair, 0.014, 0.44, metalMat, position));
+                addCylinder(chair, 0.012, 0.52, metalMat, [-0.19, 0.66, 0.18]);
+                addCylinder(chair, 0.012, 0.52, metalMat, [0.19, 0.66, 0.18]);
+                addCylinder(chair, 0.012, 0.38, metalMat, [0, 0.27, -0.18], [0, 0, Math.PI / 2]);
+                addCylinder(chair, 0.012, 0.38, metalMat, [0, 0.56, 0.2], [0, 0, Math.PI / 2]);
 
-                addCylinder(chair, 0.032, 0.68, chairWoodMat, [-0.29, 0.82, 0.29]);
-                addCylinder(chair, 0.032, 0.68, chairWoodMat, [0.29, 0.82, 0.29]);
-                addCylinder(chair, 0.022, 0.45, chairWoodMat, [-0.14, 0.81, 0.305]);
-                addCylinder(chair, 0.022, 0.45, chairWoodMat, [0, 0.81, 0.315]);
-                addCylinder(chair, 0.022, 0.45, chairWoodMat, [0.14, 0.81, 0.305]);
-                addCylinder(chair, 0.027, 0.64, chairWoodMat, [0, 0.72, 0.3], [0, 0, Math.PI / 2]);
-
-                const topRail = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.032, 10, 36, Math.PI), chairWoodMat);
-                topRail.position.set(0, 0.82, 0.31);
-                setMeshShadow(topRail);
-                chair.add(topRail);
-
-                const frontRail = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.56, 12), chairWoodMat);
-                frontRail.position.set(0, 0.3, -0.25);
-                frontRail.rotation.z = Math.PI / 2;
-                setMeshShadow(frontRail);
-                chair.add(frontRail);
-
-                group.add(chair);
+                return chair;
             }
 
-            createChair(0, chairDistance, 0);
-            createChair(0, -chairDistance, Math.PI);
-            createChair(chairDistance, 0, Math.PI / 2);
-            createChair(-chairDistance, 0, -Math.PI / 2);
+            function createTableChairSet(x) {
+                const set = new THREE.Group();
+                set.position.set(x, 0, centerZ);
 
-            group.position.set(config.centerX || 0, 0, config.centerZ || 0);
-            group.rotation.y = config.rotationY || 0;
+                const tableTop = new THREE.Mesh(new THREE.BoxGeometry(tableWidth, 0.055, tableDepth), tableMat);
+                tableTop.position.y = tableHeight;
+                setMeshShadow(tableTop, true);
+                set.add(tableTop);
+
+                const edge = new THREE.Mesh(new THREE.BoxGeometry(tableWidth + 0.04, 0.035, tableDepth + 0.04), tableEdgeMat);
+                edge.position.y = tableHeight - 0.04;
+                setMeshShadow(edge);
+                set.add(edge);
+
+                [
+                    [-tableWidth / 2 + 0.08, tableHeight / 2, -tableDepth / 2 + 0.08],
+                    [tableWidth / 2 - 0.08, tableHeight / 2, -tableDepth / 2 + 0.08],
+                    [-tableWidth / 2 + 0.08, tableHeight / 2, tableDepth / 2 - 0.08],
+                    [tableWidth / 2 - 0.08, tableHeight / 2, tableDepth / 2 - 0.08]
+                ].forEach((position) => addCylinder(set, 0.017, tableHeight, metalMat, position));
+
+                const lowerBarZ = tableDepth / 2 + 0.04;
+                addCylinder(set, 0.012, tableWidth - 0.16, metalMat, [0, 0.32, lowerBarZ], [0, 0, Math.PI / 2]);
+
+                set.add(createStudyChair(chairOffsetZ, 0));
+                set.add(createStudyChair(-chairOffsetZ, Math.PI));
+                group.add(set);
+            }
+
+            for (let i = 0; i < count; i++) {
+                createTableChairSet(rowMinX + spacing * i);
+            }
+
             scene.add(group);
         }
 
@@ -1515,8 +1490,8 @@
                 case 'raisedLatticePlatform':
                     createRaisedLatticePlatform(config);
                     break;
-                case 'woodDiningSet':
-                    createWoodDiningSet(config);
+                case 'alignedStudyTableChairs':
+                    createAlignedStudyTableChairs(config);
                     break;
                 default:
                     console.warn(`Unknown interior object type: ${config.type}`);
