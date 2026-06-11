@@ -1386,6 +1386,7 @@
             const tableTopThickness = config.tableTopThickness || 0.08;
             const chairDistance = config.chairDistance || 1.35;
             const chairScale = config.chairScale || 1;
+            const tableScale = tableSize / 1.72;
 
             const tableWoodTex = createWoodTexture();
             tableWoodTex.repeat.set(1.25, 1.25);
@@ -1412,32 +1413,32 @@
             group.add(top);
 
             const edgeMat = new THREE.MeshStandardMaterial({ color: 0x9f6432, roughness: 0.62, metalness: 0.02 });
-            const edgeThickness = 0.055;
+            const edgeThickness = 0.055 * tableScale;
             [
                 { x: 0, z: tableSize / 2 + edgeThickness / 2, w: tableSize + edgeThickness, d: edgeThickness },
                 { x: 0, z: -tableSize / 2 - edgeThickness / 2, w: tableSize + edgeThickness, d: edgeThickness },
                 { x: tableSize / 2 + edgeThickness / 2, z: 0, w: edgeThickness, d: tableSize },
                 { x: -tableSize / 2 - edgeThickness / 2, z: 0, w: edgeThickness, d: tableSize }
             ].forEach(({ x, z, w, d }) => {
-                const edge = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07, d), edgeMat);
-                edge.position.set(x, tableHeight - 0.055, z);
+                const edge = new THREE.Mesh(new THREE.BoxGeometry(w, 0.07 * tableScale, d), edgeMat);
+                edge.position.set(x, tableHeight - 0.055 * tableScale, z);
                 setMeshShadow(edge);
                 group.add(edge);
             });
 
-            const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.085, tableHeight - tableTopThickness, 24), blackMetalMat);
+            const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.065 * tableScale, 0.085 * tableScale, tableHeight - tableTopThickness, 24), blackMetalMat);
             pedestal.position.y = (tableHeight - tableTopThickness) / 2;
             setMeshShadow(pedestal);
             group.add(pedestal);
 
-            const baseDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.4, 0.045, 32), blackMetalMat);
-            baseDisk.position.y = 0.045;
+            const baseDisk = new THREE.Mesh(new THREE.CylinderGeometry(0.34 * tableScale, 0.4 * tableScale, 0.045 * tableScale, 32), blackMetalMat);
+            baseDisk.position.y = 0.045 * tableScale;
             setMeshShadow(baseDisk, true);
             group.add(baseDisk);
 
             [0, Math.PI / 2, Math.PI, Math.PI * 1.5].forEach((rotationY) => {
-                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.055, 0.115), blackMetalMat);
-                foot.position.set(Math.cos(rotationY) * 0.25, 0.045, -Math.sin(rotationY) * 0.25);
+                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.72 * tableScale, 0.055 * tableScale, 0.115 * tableScale), blackMetalMat);
+                foot.position.set(Math.cos(rotationY) * 0.25 * tableScale, 0.045 * tableScale, -Math.sin(rotationY) * 0.25 * tableScale);
                 foot.rotation.y = rotationY;
                 setMeshShadow(foot, true);
                 group.add(foot);
