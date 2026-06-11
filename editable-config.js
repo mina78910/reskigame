@@ -83,6 +83,84 @@
         maxX: 1.0,
         centerZ: -7.0,
         count: 5
+      },
+      // 物の名前: 木製ダイニングセット
+      // 概要: 参考画像のような、明るい木目の四角テーブル＋4脚の木製チェアです。
+      //       centerX/centerZ で配置、rotationY で向き、tableSize/chairDistance で広がりを調整します。
+      //       エリア1（X:1〜6 / Z:-4〜1）に3セット配置します。
+      {
+        id: 'wood-dining-set-area-1-back-left',
+        type: 'woodDiningSet',
+        centerX: 2.15,
+        centerZ: -2.9,
+        rotationY: 0.08,
+        tableSize: 1.08,
+        tableHeight: 0.74,
+        tableTopThickness: 0.075,
+        chairDistance: 0.88,
+        chairScale: 0.72
+      },
+      {
+        id: 'wood-dining-set-area-1-back-right',
+        type: 'woodDiningSet',
+        centerX: 4.85,
+        centerZ: -2.9,
+        rotationY: -0.06,
+        tableSize: 1.08,
+        tableHeight: 0.74,
+        tableTopThickness: 0.075,
+        chairDistance: 0.88,
+        chairScale: 0.72
+      },
+      {
+        id: 'wood-dining-set-area-1-front-center',
+        type: 'woodDiningSet',
+        centerX: 3.5,
+        centerZ: -0.75,
+        rotationY: 0.18,
+        tableSize: 1.08,
+        tableHeight: 0.74,
+        tableTopThickness: 0.075,
+        chairDistance: 0.88,
+        chairScale: 0.72
+      },
+      // 物の名前: 木製ダイニングセット
+      // 概要: エリア2（X:-8〜-5 / Z:-4〜1）に3セット配置します。
+      {
+        id: 'wood-dining-set-area-2-back',
+        type: 'woodDiningSet',
+        centerX: -6.5,
+        centerZ: -3.15,
+        rotationY: Math.PI / 2 + 0.05,
+        tableSize: 0.94,
+        tableHeight: 0.74,
+        tableTopThickness: 0.07,
+        chairDistance: 0.72,
+        chairScale: 0.62
+      },
+      {
+        id: 'wood-dining-set-area-2-middle',
+        type: 'woodDiningSet',
+        centerX: -6.5,
+        centerZ: -1.5,
+        rotationY: Math.PI / 2 - 0.05,
+        tableSize: 0.94,
+        tableHeight: 0.74,
+        tableTopThickness: 0.07,
+        chairDistance: 0.72,
+        chairScale: 0.62
+      },
+      {
+        id: 'wood-dining-set-area-2-front',
+        type: 'woodDiningSet',
+        centerX: -6.5,
+        centerZ: 0.15,
+        rotationY: Math.PI / 2 + 0.12,
+        tableSize: 0.94,
+        tableHeight: 0.74,
+        tableTopThickness: 0.07,
+        chairDistance: 0.72,
+        chairScale: 0.62
       }
     ]
   };
