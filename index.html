@@ -467,6 +467,7 @@
         const COORDINATE_GUIDE_MIN_Z = EDITABLE_CONFIG.coordinateGuides.minZ;
         const COORDINATE_GUIDE_MAX_Z = EDITABLE_CONFIG.coordinateGuides.maxZ;
         const STUDIO_CEILING_ZONE = EDITABLE_CONFIG.studioCeilingZone || [];
+        const WHITE_WALL_ZONES = EDITABLE_CONFIG.whiteWallZones || [];
         
         let isPlaying = false;
         let copyToastTimer = null;
@@ -974,14 +975,21 @@
         floor.receiveShadow = true;
         scene.add(floor);
 
-        function createWall(w, h, d, x, y, z, color = 0xd0d8e8) {
+        function createWall(w, h, d, x, y, z, color = 0xf4d7aa, options = {}) {
             const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ map: wallWoodTex, color: 0xf4d7aa, roughness: 0.58 });
+            const useTexture = options.useTexture !== false;
+            const mat = new THREE.MeshStandardMaterial({
+                map: useTexture ? wallWoodTex : null,
+                color,
+                roughness: options.roughness ?? 0.58,
+                metalness: options.metalness ?? 0.0
+            });
             const wall = new THREE.Mesh(geo, mat);
             wall.position.set(x, y, z);
             wall.receiveShadow = true;
             wall.castShadow = true;
             scene.add(wall);
+            return wall;
         }
 
         function createXWallSegment(centerX, startZ, endZ, color = 0xd0d8e8, height = roomHeight) {
@@ -1175,6 +1183,28 @@
             (roomDepth / 2 + ROOM_LAYOUT.frontMaxZ) / 2,
             0xd8d5ca
         );
+
+        function createWhiteWallZone(zone) {
+            const minX = Math.min(zone.minX, zone.maxX);
+            const maxX = Math.max(zone.minX, zone.maxX);
+            const minZ = Math.min(zone.minZ, zone.maxZ);
+            const maxZ = Math.max(zone.minZ, zone.maxZ);
+            const width = maxX - minX;
+            const depth = maxZ - minZ;
+            const centerX = (minX + maxX) / 2;
+            const centerZ = (minZ + maxZ) / 2;
+            const thickness = zone.thickness || ROOM_LAYOUT.wallThickness;
+            const wallColor = zone.color || 0xffffff;
+            const whiteWallOptions = { useTexture: false, roughness: 0.44, metalness: 0.0 };
+
+            // 指定四隅を結ぶ範囲を、床から天井までの白い壁で囲って覆う。
+            createWall(width + thickness, roomHeight, thickness, centerX, roomHeight / 2, minZ - thickness / 2, wallColor, whiteWallOptions);
+            createWall(width + thickness, roomHeight, thickness, centerX, roomHeight / 2, maxZ + thickness / 2, wallColor, whiteWallOptions);
+            createWall(thickness, roomHeight, depth, minX - thickness / 2, roomHeight / 2, centerZ, wallColor, whiteWallOptions);
+            createWall(thickness, roomHeight, depth, maxX + thickness / 2, roomHeight / 2, centerZ, wallColor, whiteWallOptions);
+        }
+
+        WHITE_WALL_ZONES.forEach(createWhiteWallZone);
 
         // ==========================================
         // メイン天井 
@@ -2221,6 +2251,21 @@
                 if(camera.position.x > boundXMax) camera.position.x = boundXMax; 
                 if(camera.position.z < boundZMin) camera.position.z = boundZMin; 
                 
+                WHITE_WALL_ZONES.forEach((zone) => {
+                    const padding = zone.collisionPadding ?? 0.35;
+                    const minX = Math.min(zone.minX, zone.maxX) - padding;
+                    const maxX = Math.max(zone.minX, zone.maxX) + padding;
+                    const minZ = Math.min(zone.minZ, zone.maxZ) - padding;
+                    const maxZ = Math.max(zone.minZ, zone.maxZ) + padding;
+                    const insideZone = camera.position.x >= minX
+                        && camera.position.x <= maxX
+                        && camera.position.z >= minZ
+                        && camera.position.z <= maxZ;
+                    if (insideZone) {
+                        camera.position.copy(previousPosition);
+                    }
+                });
+
                 const walkableFrontMaxZ = ROOM_LAYOUT.frontMaxZ - ROOM_LAYOUT.playerWallPadding;
 
                 if (camera.position.z > walkableFrontMaxZ) camera.position.z = walkableFrontMaxZ;
