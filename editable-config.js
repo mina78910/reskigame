@@ -192,6 +192,19 @@
         tableTopThickness: 0.075,
         chairDistance: 0.88,
         chairScale: 0.72
+      },
+      // 物の名前: 卓球台
+      // 概要: 参考画像のような、明るい天板・中央ネット・木脚付きの卓球台です。
+      //       指定範囲（X:5〜7 / Z:-12〜-7）いっぱいに1台だけ配置します。
+      {
+        id: 'ping-pong-table-x5-7-z-12--7',
+        type: 'pingPongTable',
+        minX: 5,
+        maxX: 7,
+        minZ: -12,
+        maxZ: -7,
+        tableHeight: 0.76,
+        topThickness: 0.08
       }
     ]
   };
