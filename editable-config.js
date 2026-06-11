@@ -205,6 +205,23 @@
         chairDistance: 0.88,
         chairScale: 0.72
       },
+      // 物の名前: 天井まで届く円柱の柱
+      // 概要: 参考画像の赤印のようなコンクリート調の丸柱です。
+      //       centerX/centerZ で柱の中心位置、radius で太さを調整します。高さは天井まで自動で伸びます。
+      {
+        id: 'ceiling-column-x7-z-14',
+        type: 'ceilingCylinderColumn',
+        centerX: 7,
+        centerZ: -14,
+        radius: 0.36
+      },
+      {
+        id: 'ceiling-column-x-9-z-14',
+        type: 'ceilingCylinderColumn',
+        centerX: -9,
+        centerZ: -14,
+        radius: 0.36
+      },
       // 物の名前: 卓球台
       // 概要: 参考画像のような、明るい天板・中央ネット・木脚付きの卓球台です。
       //       指定範囲（X:5〜7 / Z:-12〜-7）いっぱいに1台だけ配置します。
