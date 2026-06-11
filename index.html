@@ -1640,6 +1640,115 @@
             scene.add(group);
         }
 
+        function createPingPongTable(config) {
+            const group = new THREE.Group();
+            group.name = config.id;
+
+            const minX = config.minX;
+            const maxX = config.maxX;
+            const minZ = config.minZ;
+            const maxZ = config.maxZ;
+            const tableWidth = (maxX - minX) * 0.94;
+            const tableDepth = (maxZ - minZ) * 0.94;
+            const tableHeight = config.tableHeight || 0.76;
+            const topThickness = config.topThickness || 0.08;
+            const centerX = (minX + maxX) / 2;
+            const centerZ = (minZ + maxZ) / 2;
+
+            const topMat = new THREE.MeshStandardMaterial({
+                color: 0xf3ead8,
+                roughness: 0.42,
+                metalness: 0.02
+            });
+            const edgeMat = new THREE.MeshStandardMaterial({ color: 0xcaa77d, roughness: 0.55, metalness: 0.02 });
+            const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.36, metalness: 0.0 });
+            const netMat = new THREE.MeshStandardMaterial({
+                color: 0x143b90,
+                roughness: 0.48,
+                metalness: 0.08,
+                transparent: true,
+                opacity: 0.86,
+                side: THREE.DoubleSide
+            });
+            const netTrimMat = new THREE.MeshStandardMaterial({ color: 0xf7f7f7, roughness: 0.38, metalness: 0.04 });
+            const woodLegMat = new THREE.MeshStandardMaterial({ color: 0xc78747, roughness: 0.6, metalness: 0.01 });
+            const darkBraceMat = new THREE.MeshStandardMaterial({ color: 0x1c1714, roughness: 0.52, metalness: 0.22 });
+
+            const top = new THREE.Mesh(new THREE.BoxGeometry(tableWidth, topThickness, tableDepth), topMat);
+            top.position.y = tableHeight;
+            setMeshShadow(top, true);
+            group.add(top);
+
+            const apronHeight = 0.12;
+            const apronThickness = 0.06;
+            [
+                { x: 0, z: tableDepth / 2 + apronThickness / 2, w: tableWidth, d: apronThickness },
+                { x: 0, z: -tableDepth / 2 - apronThickness / 2, w: tableWidth, d: apronThickness },
+                { x: tableWidth / 2 + apronThickness / 2, z: 0, w: apronThickness, d: tableDepth },
+                { x: -tableWidth / 2 - apronThickness / 2, z: 0, w: apronThickness, d: tableDepth }
+            ].forEach(({ x, z, w, d }) => {
+                const apron = new THREE.Mesh(new THREE.BoxGeometry(w, apronHeight, d), edgeMat);
+                apron.position.set(x, tableHeight - topThickness / 2 - apronHeight / 2, z);
+                setMeshShadow(apron);
+                group.add(apron);
+            });
+
+            const centerLine = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.006, tableDepth * 0.98), lineMat);
+            centerLine.position.set(0, tableHeight + topThickness / 2 + 0.005, 0);
+            setMeshShadow(centerLine);
+            group.add(centerLine);
+
+            const netHeight = 0.34;
+            const net = new THREE.Mesh(new THREE.BoxGeometry(tableWidth + 0.18, netHeight, 0.025), netMat);
+            net.position.set(0, tableHeight + topThickness / 2 + netHeight / 2, 0);
+            setMeshShadow(net);
+            group.add(net);
+
+            const netTop = new THREE.Mesh(new THREE.BoxGeometry(tableWidth + 0.26, 0.035, 0.035), netTrimMat);
+            netTop.position.set(0, tableHeight + topThickness / 2 + netHeight + 0.02, 0);
+            setMeshShadow(netTop);
+            group.add(netTop);
+
+            function addCylinder(parent, radius, height, material, position, rotation = [0, 0, 0], segments = 16) {
+                const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, segments), material);
+                mesh.position.set(...position);
+                mesh.rotation.set(...rotation);
+                setMeshShadow(mesh);
+                parent.add(mesh);
+                return mesh;
+            }
+
+            [-tableWidth / 2 - 0.08, tableWidth / 2 + 0.08].forEach((x) => {
+                addCylinder(group, 0.025, netHeight + 0.12, netTrimMat, [x, tableHeight + topThickness / 2 + (netHeight + 0.12) / 2 - 0.02, 0]);
+            });
+
+            const legHeight = tableHeight - topThickness / 2;
+            const legInsetX = tableWidth * 0.34;
+            const legInsetZ = tableDepth * 0.34;
+            [
+                [-legInsetX, -legInsetZ, -0.16],
+                [legInsetX, -legInsetZ, 0.16],
+                [-legInsetX, legInsetZ, 0.16],
+                [legInsetX, legInsetZ, -0.16]
+            ].forEach(([x, z, lean]) => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, legHeight, 0.12), woodLegMat);
+                leg.position.set(x, legHeight / 2, z);
+                leg.rotation.x = lean;
+                setMeshShadow(leg, true);
+                group.add(leg);
+            });
+
+            [-legInsetZ, legInsetZ].forEach((z) => {
+                const brace = new THREE.Mesh(new THREE.BoxGeometry(tableWidth * 0.78, 0.045, 0.055), darkBraceMat);
+                brace.position.set(0, 0.43, z);
+                setMeshShadow(brace);
+                group.add(brace);
+            });
+
+            group.position.set(centerX, 0, centerZ);
+            scene.add(group);
+        }
+
         function createWoodDiningSet(config) {
             const group = new THREE.Group();
             group.name = config.id;
@@ -1783,6 +1892,9 @@
                     break;
                 case 'woodDiningSet':
                     createWoodDiningSet(config);
+                    break;
+                case 'pingPongTable':
+                    createPingPongTable(config);
                     break;
                 default:
                     console.warn(`Unknown interior object type: ${config.type}`);
