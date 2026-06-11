@@ -64,6 +64,21 @@
       {
         id: 'raised-lattice-platform',
         type: 'raisedLatticePlatform'
+      },
+      // 物の名前: 木製ダイニングセット
+      // 概要: 参考画像のような、明るい木目の四角テーブルと4脚の木製チェアです。
+      //       centerX/centerZ で配置、rotationY で向き、tableSize/chairDistance で広がりを調整できます。
+      {
+        id: 'reference-wood-dining-set',
+        type: 'woodDiningSet',
+        centerX: 6.2,
+        centerZ: 5.8,
+        rotationY: 0.08,
+        tableSize: 1.72,
+        tableHeight: 0.76,
+        tableTopThickness: 0.08,
+        chairDistance: 1.35,
+        chairScale: 1.0
       }
     ]
   };
