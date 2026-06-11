@@ -65,24 +65,28 @@
         id: 'raised-lattice-platform',
         type: 'raisedLatticePlatform'
       },
-      // 物の名前: 整列した学習テーブル＆チェア
-      // 概要: 参考画像のような、明るい天板・黒い細脚・木板背もたれの机と椅子です。
-      //       指定された2つの範囲（X:-6〜1 / Z:-12〜-10、X:-6〜1 / Z:-8〜-6）に整列配置します。
+      // 物の名前: カフェ風テーブル＆丸背もたれチェア（エリア1）
+      // 概要: 参考画像のような明るい木目天板・黒い一本脚・丸みのある木製椅子のセットです。
+      //       指定範囲 X:1〜6 / Z:-4〜1 の中に、机3つ・椅子3つを自然にずらして配置します。
       {
-        id: 'aligned-study-table-chair-zone-back',
-        type: 'alignedStudyTableChairs',
-        minX: -6.0,
-        maxX: 1.0,
-        centerZ: -11.0,
-        count: 5
+        id: 'cafe-table-chair-area-1',
+        type: 'cafeTableChairZone',
+        placements: [
+          { x: 2.05, z: -3.05, rotation: -0.16, chairAngle: 2.45 },
+          { x: 4.75, z: -2.15, rotation: 0.22, chairAngle: -1.75 },
+          { x: 3.35, z: 0.00, rotation: -0.36, chairAngle: 0.92 }
+        ]
       },
+      // 物の名前: カフェ風テーブル＆丸背もたれチェア（エリア2）
+      // 概要: 指定範囲 X:-8〜-5 / Z:-4〜1 の中に、机3つ・椅子3つを壁や通路に寄せすぎず配置します。
       {
-        id: 'aligned-study-table-chair-zone-front',
-        type: 'alignedStudyTableChairs',
-        minX: -6.0,
-        maxX: 1.0,
-        centerZ: -7.0,
-        count: 5
+        id: 'cafe-table-chair-area-2',
+        type: 'cafeTableChairZone',
+        placements: [
+          { x: -7.25, z: -3.00, rotation: 0.18, chairAngle: 0.35 },
+          { x: -5.90, z: -1.45, rotation: -0.24, chairAngle: -2.70 },
+          { x: -7.10, z: 0.20, rotation: 0.32, chairAngle: 1.72 }
+        ]
       }
     ]
   };
