@@ -1381,18 +1381,13 @@
             const group = new THREE.Group();
             group.name = config.id;
 
-            const minX = config.minX;
-            const maxX = config.maxX;
-            const centerZ = config.centerZ;
+            const centerZ = config.centerZ || 0;
             const count = config.count || 5;
+            const naturalSets = config.sets || null;
             const tableWidth = config.tableWidth || 0.82;
             const tableDepth = config.tableDepth || 0.58;
             const tableHeight = config.tableHeight || 0.72;
             const chairOffsetZ = config.chairOffsetZ || 0.58;
-            const sideInset = config.sideInset || 0.5;
-            const rowMinX = minX + sideInset;
-            const rowMaxX = maxX - sideInset;
-            const spacing = count > 1 ? (rowMaxX - rowMinX) / (count - 1) : 0;
 
             const tableMat = new THREE.MeshStandardMaterial({ color: 0xe7ded2, roughness: 0.42, metalness: 0.02 });
             const tableEdgeMat = new THREE.MeshStandardMaterial({ color: 0xb9aa98, roughness: 0.58, metalness: 0.02 });
@@ -1446,9 +1441,10 @@
                 return chair;
             }
 
-            function createTableChairSet(x) {
+            function createTableChairSet(x, z = centerZ, rotationY = 0) {
                 const set = new THREE.Group();
-                set.position.set(x, 0, centerZ);
+                set.position.set(x, 0, z);
+                set.rotation.y = rotationY;
 
                 const tableTop = new THREE.Mesh(new THREE.BoxGeometry(tableWidth, 0.055, tableDepth), tableMat);
                 tableTop.position.y = tableHeight;
@@ -1475,8 +1471,21 @@
                 group.add(set);
             }
 
-            for (let i = 0; i < count; i++) {
-                createTableChairSet(rowMinX + spacing * i);
+            if (naturalSets) {
+                naturalSets.forEach((placement) => {
+                    createTableChairSet(placement.x, placement.z, placement.rotationY || 0);
+                });
+            } else {
+                const minX = config.minX;
+                const maxX = config.maxX;
+                const sideInset = config.sideInset || 0.5;
+                const rowMinX = minX + sideInset;
+                const rowMaxX = maxX - sideInset;
+                const spacing = count > 1 ? (rowMaxX - rowMinX) / (count - 1) : 0;
+
+                for (let i = 0; i < count; i++) {
+                    createTableChairSet(rowMinX + spacing * i);
+                }
             }
 
             scene.add(group);

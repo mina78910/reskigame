@@ -65,9 +65,9 @@
         id: 'raised-lattice-platform',
         type: 'raisedLatticePlatform'
       },
-      // 物の名前: 整列した学習テーブル＆チェア
+      // 物の名前: 学習テーブル＆チェア
       // 概要: 参考画像のような、明るい天板・黒い細脚・木板背もたれの机と椅子です。
-      //       指定された2つの範囲（X:-6〜1 / Z:-12〜-10、X:-6〜1 / Z:-8〜-6）に整列配置します。
+      //       count 指定時は横一列、sets 指定時は各 x/z/rotationY で自然に配置します。
       {
         id: 'aligned-study-table-chair-zone-back',
         type: 'alignedStudyTableChairs',
@@ -83,6 +83,28 @@
         maxX: 1.0,
         centerZ: -7.0,
         count: 5
+      },
+      // 物の名前: 自然配置した学習テーブル＆チェア（右側エリア）
+      // 概要: 指定エリア（X:1〜6 / Z:-4〜1）内に、通路をふさがないよう3セットを少しずつずらして配置します。
+      {
+        id: 'natural-study-table-chair-area-right',
+        type: 'alignedStudyTableChairs',
+        sets: [
+          { x: 2.0, z: -3.25, rotationY: 0.12 },
+          { x: 4.6, z: -2.05, rotationY: -0.18 },
+          { x: 3.15, z: 0.05, rotationY: 0.26 }
+        ]
+      },
+      // 物の名前: 自然配置した学習テーブル＆チェア（左側エリア）
+      // 概要: 指定エリア（X:-8〜-5 / Z:-4〜1）内に、角度と間隔を変えて3セットを配置します。
+      {
+        id: 'natural-study-table-chair-area-left',
+        type: 'alignedStudyTableChairs',
+        sets: [
+          { x: -6.15, z: -3.15, rotationY: -0.2 },
+          { x: -7.1, z: -1.45, rotationY: 0.24 },
+          { x: -5.95, z: 0.2, rotationY: -0.12 }
+        ]
       }
     ]
   };
