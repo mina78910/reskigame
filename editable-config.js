@@ -64,6 +64,25 @@
       {
         id: 'raised-lattice-platform',
         type: 'raisedLatticePlatform'
+      },
+      // 物の名前: 整列した学習テーブル＆チェア
+      // 概要: 参考画像のような、明るい天板・黒い細脚・木板背もたれの机と椅子です。
+      //       指定された2つの範囲（X:-6〜1 / Z:-12〜-10、X:-6〜1 / Z:-8〜-6）に整列配置します。
+      {
+        id: 'aligned-study-table-chair-zone-back',
+        type: 'alignedStudyTableChairs',
+        minX: -6.0,
+        maxX: 1.0,
+        centerZ: -11.0,
+        count: 5
+      },
+      {
+        id: 'aligned-study-table-chair-zone-front',
+        type: 'alignedStudyTableChairs',
+        minX: -6.0,
+        maxX: 1.0,
+        centerZ: -7.0,
+        count: 5
       }
     ]
   };
