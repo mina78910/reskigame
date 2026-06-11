@@ -466,6 +466,7 @@
         const COORDINATE_GUIDE_MAX_X = EDITABLE_CONFIG.coordinateGuides.maxX;
         const COORDINATE_GUIDE_MIN_Z = EDITABLE_CONFIG.coordinateGuides.minZ;
         const COORDINATE_GUIDE_MAX_Z = EDITABLE_CONFIG.coordinateGuides.maxZ;
+        const STUDIO_CEILING_ZONE = EDITABLE_CONFIG.studioCeilingZone || [];
         
         let isPlaying = false;
         let copyToastTimer = null;
@@ -1198,6 +1199,161 @@
 
         // 天井面は木目をそのまま見せるため、白いグリッドは重ねない。
 
+        function isPointInPolygon(x, z, polygon) {
+            if (!polygon || polygon.length < 3) return false;
+
+            let inside = false;
+            for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                const xi = polygon[i].x;
+                const zi = polygon[i].z;
+                const xj = polygon[j].x;
+                const zj = polygon[j].z;
+                const crossesZ = (zi > z) !== (zj > z);
+                const edgeX = (xj - xi) * (z - zi) / (zj - zi) + xi;
+                if (crossesZ && x < edgeX) inside = !inside;
+            }
+
+            return inside;
+        }
+
+        function createStudioCeiling(zone) {
+            if (!zone || zone.length < 3) return;
+
+            const studioGroup = new THREE.Group();
+            studioGroup.name = 'studio-style-exposed-ceiling-zone';
+            ceilingGroup.add(studioGroup);
+
+            const studioShape = new THREE.Shape();
+            studioShape.moveTo(zone[0].x, zone[0].z);
+            for (let i = 1; i < zone.length; i++) {
+                studioShape.lineTo(zone[i].x, zone[i].z);
+            }
+            studioShape.lineTo(zone[0].x, zone[0].z);
+
+            const studioPanel = new THREE.Mesh(
+                new THREE.ShapeGeometry(studioShape),
+                new THREE.MeshStandardMaterial({
+                    color: 0x24282d,
+                    roughness: 0.72,
+                    metalness: 0.18,
+                    side: THREE.DoubleSide,
+                    emissive: 0x050607
+                })
+            );
+            studioPanel.name = 'dark-studio-ceiling-background';
+            studioPanel.rotation.x = Math.PI / 2;
+            studioPanel.position.y = -0.018;
+            studioPanel.receiveShadow = true;
+            studioGroup.add(studioPanel);
+
+            const aluminumMat = new THREE.MeshStandardMaterial({
+                color: 0xcfd3d6,
+                roughness: 0.24,
+                metalness: 0.82,
+                emissive: 0x17191a
+            });
+            const darkMetalMat = new THREE.MeshStandardMaterial({
+                color: 0x111418,
+                roughness: 0.48,
+                metalness: 0.68
+            });
+            const cableMat = new THREE.MeshStandardMaterial({
+                color: 0x050505,
+                roughness: 0.42,
+                metalness: 0.2
+            });
+            const warmCableMat = new THREE.MeshStandardMaterial({
+                color: 0x3d2814,
+                roughness: 0.5,
+                metalness: 0.28
+            });
+            const lightMat = new THREE.MeshStandardMaterial({
+                color: 0xfff3d0,
+                emissive: 0xffe2a3,
+                emissiveIntensity: 1.25,
+                roughness: 0.18
+            });
+
+            function addBox(name, size, position, material, rotationY = 0) {
+                const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+                mesh.name = name;
+                mesh.position.set(...position);
+                mesh.rotation.y = rotationY;
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                studioGroup.add(mesh);
+                return mesh;
+            }
+
+            function addCylinder(name, radius, length, position, rotation, material, segments = 24) {
+                const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, length, segments), material);
+                mesh.name = name;
+                mesh.position.set(...position);
+                mesh.rotation.set(...rotation);
+                mesh.castShadow = true;
+                studioGroup.add(mesh);
+                return mesh;
+            }
+
+            function addCable(name, points, material, radius = 0.018) {
+                const curve = new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)));
+                const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, radius, 8, false), material);
+                mesh.name = name;
+                mesh.castShadow = true;
+                studioGroup.add(mesh);
+                return mesh;
+            }
+
+            // アルミダクトと配管を、指定された天井範囲の内側だけに走らせる。
+            addBox('wide-aluminum-air-duct-center', [13.2, 0.28, 0.48], [0, -0.24, -4.55], aluminumMat, -0.06);
+            addBox('wide-aluminum-air-duct-front', [12.0, 0.22, 0.34], [0, -0.3, 0.65], aluminumMat, 0.02);
+            addBox('narrow-cross-duct-right', [0.44, 0.24, 8.7], [4.8, -0.34, -4.1], aluminumMat, 0.04);
+            addBox('narrow-cross-duct-left', [0.36, 0.2, 7.0], [-4.8, -0.36, -3.7], aluminumMat, -0.04);
+
+            [-5.8, -2.9, 0.0, 2.9, 5.8].forEach((x) => {
+                addCylinder(`aluminum-pipe-z-${x}`, 0.055, 9.3, [x, -0.5, -4.2], [Math.PI / 2, 0, 0], aluminumMat, 20);
+            });
+            [-8.4, -5.3, -2.1, 1.0].forEach((z) => {
+                addCylinder(`black-electric-conduit-x-${z}`, 0.035, 12.7, [0, -0.66, z], [0, 0, Math.PI / 2], darkMetalMat, 16);
+            });
+
+            addCable('looping-black-electric-cable-a', [[-6.1, -0.78, 1.2], [-4.2, -0.96, -0.4], [-1.5, -0.72, -1.9], [1.8, -0.94, -2.8], [5.9, -0.74, -4.6]], cableMat);
+            addCable('looping-black-electric-cable-b', [[-5.8, -0.86, -7.9], [-3.2, -0.68, -6.2], [0.5, -0.9, -6.9], [3.5, -0.7, -8.8], [6.4, -0.88, -9.9]], cableMat, 0.015);
+            addCable('warm-copper-signal-cable', [[-6.0, -0.82, -3.0], [-3.0, -1.02, -4.0], [0.0, -0.76, -3.4], [2.8, -0.98, -5.3], [6.0, -0.8, -5.8]], warmCableMat, 0.014);
+
+            const trackRows = [0.95, -2.45, -6.15, -9.1];
+            trackRows.forEach((z, rowIndex) => {
+                addBox(`black-lighting-track-${rowIndex}`, [12.3, 0.055, 0.08], [0, -0.82, z], darkMetalMat);
+                [-5.4, -2.1, 1.2, 4.5].forEach((x, colIndex) => {
+                    if (!isPointInPolygon(x, z, zone)) return;
+
+                    addCylinder(`studio-track-light-stem-${rowIndex}-${colIndex}`, 0.018, 0.32, [x, -0.99, z], [0, 0, 0], darkMetalMat, 12);
+                    const can = addCylinder(`studio-track-spotlight-${rowIndex}-${colIndex}`, 0.12, 0.24, [x, -1.17, z + 0.04], [Math.PI / 2 + 0.2, 0.1, 0], darkMetalMat, 20);
+                    can.scale.x = 0.72;
+                    const lens = new THREE.Mesh(new THREE.CircleGeometry(0.09, 20), lightMat);
+                    lens.name = `warm-spotlight-lens-${rowIndex}-${colIndex}`;
+                    lens.position.set(x, -1.28, z + 0.16);
+                    lens.rotation.x = Math.PI / 2 + 0.2;
+                    studioGroup.add(lens);
+
+                    const spotGlow = new THREE.PointLight(0xffd99c, 0.11, 5, 2);
+                    spotGlow.name = `warm-studio-point-light-${rowIndex}-${colIndex}`;
+                    spotGlow.position.set(x, -1.35, z + 0.18);
+                    studioGroup.add(spotGlow);
+                });
+            });
+
+            // 吊り金具を加え、写真のような露出天井の密度を出す。
+            [-6, -3, 0, 3, 6].forEach((x) => {
+                [-8.8, -4.8, -0.8].forEach((z) => {
+                    if (!isPointInPolygon(x, z, zone)) return;
+                    addCylinder(`ceiling-hanger-${x}-${z}`, 0.012, 0.62, [x, -0.32, z], [0, 0, 0], darkMetalMat, 8);
+                });
+            });
+        }
+
+        createStudioCeiling(STUDIO_CEILING_ZONE);
+
         function createCeilingLight(x, z) {
             const lightGroup = new THREE.Group();
             lightGroup.position.set(x, -0.02, z); 
@@ -1228,7 +1384,9 @@
         for (let laneIndex = 0; laneIndex < lightLaneCount; laneIndex++) {
             const z = lightMinZ + lightLaneStepZ * laneIndex;
             for (let x = lightMinX; x <= lightMaxX + 0.01; x += lightSpacingX) {
-                createCeilingLight(x, z);
+                if (!isPointInPolygon(x, z, STUDIO_CEILING_ZONE)) {
+                    createCeilingLight(x, z);
+                }
             }
         }
 
