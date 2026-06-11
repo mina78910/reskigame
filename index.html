@@ -695,6 +695,57 @@
             return texture;
         }
 
+        function createConcreteTexture() {
+            const width = 512;
+            const height = 1024;
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            const gradient = ctx.createLinearGradient(0, 0, width, 0);
+            gradient.addColorStop(0, '#8f8678');
+            gradient.addColorStop(0.22, '#b0a797');
+            gradient.addColorStop(0.5, '#d1c7b7');
+            gradient.addColorStop(0.78, '#a79d8e');
+            gradient.addColorStop(1, '#7f766b');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+
+            for (let i = 0; i < 1800; i++) {
+                const x = Math.random() * width;
+                const y = Math.random() * height;
+                const alpha = Math.random() * 0.09 + 0.025;
+                const shade = Math.random() > 0.5 ? 255 : 70;
+                ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${alpha})`;
+                ctx.fillRect(x, y, Math.random() * 2.2 + 0.4, Math.random() * 18 + 2);
+            }
+
+            ctx.strokeStyle = 'rgba(245, 238, 225, 0.2)';
+            ctx.lineWidth = 1.4;
+            for (let x = 24; x < width; x += 58) {
+                ctx.beginPath();
+                ctx.moveTo(x + Math.random() * 8, 0);
+                ctx.lineTo(x - 12 + Math.random() * 20, height);
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(87, 77, 68, 0.14)';
+            ctx.lineWidth = 2.2;
+            for (let y = 130; y < height; y += 210) {
+                ctx.beginPath();
+                ctx.moveTo(0, y + Math.random() * 10);
+                ctx.lineTo(width, y - 8 + Math.random() * 16);
+                ctx.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            return texture;
+        }
+
         function createBlackMarbleTexture() {
             const size = 512;
             const canvas = document.createElement('canvas');
@@ -1909,6 +1960,40 @@
         }
 
 
+        function createCeilingCylinderColumn(config) {
+            const group = new THREE.Group();
+            group.name = config.id;
+            const radius = config.radius ?? 0.36;
+            const height = config.height ?? roomHeight;
+
+            const concreteTex = createConcreteTexture();
+            concreteTex.repeat.set(config.textureRepeatX ?? 1.25, config.textureRepeatY ?? 1.8);
+            const concreteMat = new THREE.MeshStandardMaterial({
+                map: concreteTex,
+                color: 0xc6b9a6,
+                roughness: 0.86,
+                metalness: 0.0
+            });
+            const capMat = new THREE.MeshStandardMaterial({ color: 0x8b8174, roughness: 0.72 });
+
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, height, 48), concreteMat);
+            shaft.position.y = height / 2;
+            setMeshShadow(shaft, true);
+            group.add(shaft);
+
+            const bevelHeight = 0.08;
+            [bevelHeight / 2, height - bevelHeight / 2].forEach((y) => {
+                const cap = new THREE.Mesh(new THREE.CylinderGeometry(radius * 1.03, radius * 1.03, bevelHeight, 48), capMat);
+                cap.position.y = y;
+                setMeshShadow(cap, true);
+                group.add(cap);
+            });
+
+            group.position.set(config.centerX || 0, 0, config.centerZ || 0);
+            scene.add(group);
+        }
+
+
         function buildInteriorObject(config) {
             switch (config.type) {
                 case 'woodMarbleCounter':
@@ -1925,6 +2010,9 @@
                     break;
                 case 'pingPongTable':
                     createPingPongTable(config);
+                    break;
+                case 'ceilingCylinderColumn':
+                    createCeilingCylinderColumn(config);
                     break;
                 default:
                     console.warn(`Unknown interior object type: ${config.type}`);
