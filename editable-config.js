@@ -66,18 +66,31 @@
     // - height: 床から上面までの高さです。
     // - topThickness: 天板だけの厚みです。
     interiorObjects: [
-      // 物の名前: 木目＋黒大理石カウンター
-      // 概要: 正面寄りに置く受付/作業用の横長カウンターです。
-      //       minX/maxX で横幅、centerZ で前後位置、depth/height/topThickness で大きさを調整します。
+      // 物の名前: 木目＋黒大理石カウンター（小）
+      // 概要: 参考画像のような木目面材＋黒天板のカウンターです。
+      //       指定座標（Z9/X7、Z8/X7、Z9/X3、Z8/X3）の四隅に合わせています。
       {
-        id: 'main-marble-counter',
+        id: 'wood-marble-counter-small-x3-7-z8-9',
         type: 'woodMarbleCounter',
-        minX: -5.0,
-        maxX: 2.0,
+        minX: 3.0,
+        maxX: 7.0,
         depth: 1.0,
         height: 1.22,
         topThickness: 0.08,
-        centerZ: 4.41
+        centerZ: 8.5
+      },
+      // 物の名前: 木目＋黒大理石カウンター（大）
+      // 概要: 参考画像のような木目面材＋黒天板のカウンターです。
+      //       指定座標（Z6/X7、Z5/X7、Z6/X-2、Z5/X-2）の四隅に合わせています。
+      {
+        id: 'wood-marble-counter-large-x-2-7-z5-6',
+        type: 'woodMarbleCounter',
+        minX: -2.0,
+        maxX: 7.0,
+        depth: 1.0,
+        height: 1.22,
+        topThickness: 0.08,
+        centerZ: 5.5
       },
       // 物の名前: 黒格子付き高台
       // 概要: 右奥側に置く、木製デッキ・階段・黒い格子手すりを組み合わせた高台です。
